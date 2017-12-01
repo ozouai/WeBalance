@@ -8,6 +8,8 @@ var http = require("http");
 var https = require("https");
 var path = require("path");
 var EndpointManager_1 = require("./EndpointManager");
+require("./ProxyAssetServer");
+var AdminServer = require("./AdminServer");
 var certStore = new CertificateStorage_1.CertificateStorage();
 var proxy = httpProxy.createProxyServer({});
 var endpoints = new EndpointManager_1.EndpointManager();
@@ -37,15 +39,14 @@ var server = http.createServer(function (request, response) {
     //proxy.web(request, response, {target: "http://127.0.0.1:8080", secure: false});
     endpoints.route(request, response);
 });
-endpoints.addEndpoint("unifi.omarzouai.com", "https://192.168.1.173:8443", false, true, true);
+endpoints.addEndpoint("unifi.omarzouai.com", {
+    target: "https://192.168.1.173:8443",
+    http: false, https: true, allowSelfSigned: true, enabled: true
+});
 server.listen(80);
 server.on("upgrade", function (request, socket, head) {
     endpoints.socket(request, socket, head);
 });
-function leAgree(opts, agreeCb) {
-    // opts = { email, domains, tosUrl }
-    agreeCb(null, opts.tosUrl);
-}
 console.log(certStore.getDefaultKey());
 var secureServer = https.createServer({
     SNICallback: certStore.SNIHook(),
@@ -58,27 +59,5 @@ var secureServer = https.createServer({
 secureServer.on("upgrade", function (request, socket, head) {
     endpoints.socketSecure(request, socket, head);
 });
-var leHttpChallenge = require("le-challenge-fs").create({
-    webrootPath: path.normalize(process.env.CONFIG_DIR + "/acme/"),
-    debug: true
-});
-var le = require("greenlock").create({
-    server: require("greenlock").productionServerUrl,
-    challenges: {
-        "http-01": leHttpChallenge
-    },
-    challengeType: "http-01",
-    agreeToTerms: leAgree,
-    debug: false
-});
-/*le.register({
-    domains: ["unifi.omarzouai.com"],
-    email: "omar@omarzouai.com",
-    agreeTos: true,
-    rsaKeySize: 2048,
-    challengeType: "http-01"
-}).then(function(results) {
-    console.log(results);
-    certStore.registerKey("unifi.omarzouai.com", results.privkey, results.cert, results.chain);
-})*/
+AdminServer.bind(endpoints, certStore);
 secureServer.listen(443);
