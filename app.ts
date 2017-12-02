@@ -41,7 +41,7 @@ var server = http.createServer(function(request, response) {
 });
 
 endpoints.addEndpoint("unifi.omarzouai.com", {
-    target: "https://192.168.1.173:8443",
+    targets: ["https://192.168.1.173:8443"], routingStrategy: "roundRobin",
  http: false, https:true, allowSelfSigned: true, enabled: true});
 
 server.listen(80);
