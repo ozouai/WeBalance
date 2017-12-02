@@ -106,3 +106,5 @@ typings/
 
 # dotenv environment variables file
 .env
+
+babel_cache/
