@@ -1,6 +1,10 @@
 import * as httpProxy from "http-proxy";
 import * as path from "path";
 import * as fs from "fs";
+import * as winston from "winston";
+import {IncomingMessage, ServerResponse} from "http";
+const endpointLogger = winston.loggers.get("Endpoint");
+const managerLogger = winston.loggers.get("EndpointManager");
 export class EndpointManager {
     private endpoints: {
         [key: string]: Endpoint
@@ -27,7 +31,7 @@ export class EndpointManager {
     }
 
     public getEndpoints(): Array<Endpoint> {
-        return Object.values(this.endpoints);
+        return (Object as any).values(this.endpoints);
     }
 
     public addEndpoint(host: string, options: EndpointOptions) {
@@ -37,11 +41,12 @@ export class EndpointManager {
     }
 
     public route(request, response) {
-        let endpoint = this.locateEndpointForHost(request.headers.host);
+        let endpoint = this.locateEndpointForRequest(request);
         if(endpoint.options.http) {
             endpoint.route(request, response);
         } else {
             if(endpoint.options.https) {
+                endpointLogger.error("Requested HTTP for HTTPS site '"+request.headers.host+"', redirecting to HTTPS. "+request.connection.remoteAddress);
                 response.setHeader("Location", `https://${request.headers.host}/${request.url || ""}`);
                 response.statusCode = 302;
                 response.end();
@@ -53,7 +58,7 @@ export class EndpointManager {
     }
 
     public routeSecure(request, response) {
-        let endpoint = this.locateEndpointForHost(request.headers.host);
+        let endpoint = this.locateEndpointForRequest(request);
         if(endpoint.options.https) {
             endpoint.route(request, response);
         } else {
@@ -90,6 +95,13 @@ export class EndpointManager {
     public locateEndpointForHost(host: string) : Endpoint {
         if(this.endpoints[host]) return this.endpoints[host];
         return this.endpoints["default"];
+    }
+    public locateEndpointForRequest(request: any) {
+        if(this.endpoints[request.headers.host]) return this.endpoints[request.headers.host];
+        else {
+            managerLogger.error("Can't find endpoint for '"+request.headers.host+"', using default | "+printRequest(request));
+            return this.endpoints["default"];
+        }
     }
 }
 export interface EndpointOptions{
@@ -198,6 +210,7 @@ class ProxyNode {
     public alive: boolean;
     public endpoint: Endpoint;
     public allowSelfSigned: boolean;
+    private logTarget: string;
     public constructor(target: string, allowSelfSigned: boolean, endpoint: Endpoint) {
         this.target = target;
         this.allowSelfSigned = allowSelfSigned;
@@ -206,6 +219,10 @@ class ProxyNode {
         this.proxy = httpProxy.createProxyServer({
             target: this.target,
             secure: !this.allowSelfSigned
+        });
+        this.logTarget = this.target.replace("http://", "").replace("https://", "");
+        this.proxy.on("proxyRes", (proxyRes, request : IncomingMessage, response : ServerResponse) =>{
+            endpointLogger.info(`${this.endpoint.host} ${request.connection.remoteAddress} ${this.logTarget} - ${new Date().toISOString()} "${request.method +" "+request.url + " HTTP/"+request.httpVersion}" ${proxyRes.statusCode} - ${request.headers.referer ? "\""+request.headers.referer+"\"" : "-"} ${request.headers["user-agent"] ? "\""+request.headers["user-agent"]+"\"" : "-"}` )
         })
     }
 
@@ -221,4 +238,9 @@ class ProxyNode {
     public ws(request, socket, head) {
         this.proxy.ws(request, socket, head);
     }
+}
+
+
+function printRequest(request: IncomingMessage) {
+    return `${request.connection.remoteAddress || "-"} ${request.url || "-"}`;
 }

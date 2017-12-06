@@ -6,7 +6,7 @@ var ejs_noRoute = FileController.compileEJS("proxy-assets/ejs/noRoute.ejs");
 
 
 app.get("*", (req, res)=>{
-    res.send(ejs_noRoute({host: req.host}));
+    res.send(ejs_noRoute({host: req.hostname}));
 })
 
 

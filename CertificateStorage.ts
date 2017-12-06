@@ -2,6 +2,9 @@ import * as tls from "tls";
 import * as fs from "fs";
 import * as path from "path";
 import * as forge from "node-forge";
+import * as winston from "winston";
+import * as safeSave from "./SafeSave";
+const logger = winston.loggers.get("SSL");
 export class CertificateStorage {
     private compiledContexts : {
         [key: string]: tls.SecureContext
@@ -22,8 +25,9 @@ export class CertificateStorage {
     constructor() {
         //if(!fs.existsSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`))) fs.mkdirSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`));
         if(!fs.existsSync(path.normalize(`${process.env.CONFIG_DIR}/certs.json`))) {
+            logger.info("Can't find certificate json, recreating");
             var keys = forge.pki.rsa.generateKeyPair(2048);
-           var cert = forge.pki.createCertificate();
+           var cert = (forge.pki as any).createCertificate();
            cert.publicKey = keys.publicKey;
            cert.serialNumber = '01';
            cert.validity.notBefore = new Date();
@@ -94,9 +98,11 @@ export class CertificateStorage {
                 key: this.defaultKey,
                 cert: this.defaultCert
             });
+            logger.info("Created Default Certificate");
             this.save();
         } else {
             var d = JSON.parse(fs.readFileSync(path.normalize(`${process.env.CONFIG_DIR}/certs.json`), "utf-8"));
+            logger.info("Loaded Certificate JSON with "+Object.keys(d.certs).length+" certificates");
             this.defaultKey = d.default.key;
             this.defaultCert = d.default.cert;
             this.certStore = d.certs;
@@ -127,6 +133,7 @@ export class CertificateStorage {
             ca: chain
         };
         this.compiledContexts[domain] = context;
+        logger.verbose("Registered new certificate for domain '"+domain+"'");
         this.save();
     }
 
@@ -149,7 +156,8 @@ export class CertificateStorage {
             },
             certs: this.certStore
         };
-        fs.writeFileSync(path.normalize(`${process.env.CONFIG_DIR}/certs.json`), JSON.stringify(d));
+        safeSave.saveSync(path.normalize(`${process.env.CONFIG_DIR}/certs.json`), JSON.stringify(d))
+        logger.verbose("Saved config file");
     }
 
     private _SNIHook(domain, cb) {
@@ -160,7 +168,7 @@ export class CertificateStorage {
                 return this.compiledContexts[domain];
             }
         } else {
-            console.log("None Exist");
+            logger.error("Can't find certificate for domain '"+domain+"'");
             if(cb) cb(null, this.defaultContext);
             else {
                 return this.defaultContext;

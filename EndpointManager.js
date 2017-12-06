@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var httpProxy = require("http-proxy");
 var path = require("path");
 var fs = require("fs");
+var winston = require("winston");
+var endpointLogger = winston.loggers.get("Endpoint");
+var managerLogger = winston.loggers.get("EndpointManager");
 var EndpointManager = (function () {
     function EndpointManager() {
         this.endpoints = {};
@@ -34,12 +37,13 @@ var EndpointManager = (function () {
         this.save();
     };
     EndpointManager.prototype.route = function (request, response) {
-        var endpoint = this.locateEndpointForHost(request.headers.host);
+        var endpoint = this.locateEndpointForRequest(request);
         if (endpoint.options.http) {
             endpoint.route(request, response);
         }
         else {
             if (endpoint.options.https) {
+                endpointLogger.error("Requested HTTP for HTTPS site '" + request.headers.host + "', redirecting to HTTPS. " + request.connection.remoteAddress);
                 response.setHeader("Location", "https://" + request.headers.host + "/" + (request.url || ""));
                 response.statusCode = 302;
                 response.end();
@@ -51,7 +55,7 @@ var EndpointManager = (function () {
         }
     };
     EndpointManager.prototype.routeSecure = function (request, response) {
-        var endpoint = this.locateEndpointForHost(request.headers.host);
+        var endpoint = this.locateEndpointForRequest(request);
         if (endpoint.options.https) {
             endpoint.route(request, response);
         }
@@ -88,6 +92,14 @@ var EndpointManager = (function () {
         if (this.endpoints[host])
             return this.endpoints[host];
         return this.endpoints["default"];
+    };
+    EndpointManager.prototype.locateEndpointForRequest = function (request) {
+        if (this.endpoints[request.headers.host])
+            return this.endpoints[request.headers.host];
+        else {
+            managerLogger.error("Can't find endpoint for '" + request.headers.host + "', using default | " + printRequest(request));
+            return this.endpoints["default"];
+        }
     };
     return EndpointManager;
 }());
@@ -175,6 +187,7 @@ var Endpoint = (function () {
 exports.Endpoint = Endpoint;
 var ProxyNode = (function () {
     function ProxyNode(target, allowSelfSigned, endpoint) {
+        var _this = this;
         this.target = target;
         this.allowSelfSigned = allowSelfSigned;
         this.alive = true;
@@ -182,6 +195,10 @@ var ProxyNode = (function () {
         this.proxy = httpProxy.createProxyServer({
             target: this.target,
             secure: !this.allowSelfSigned
+        });
+        this.logTarget = this.target.replace("http://", "").replace("https://", "");
+        this.proxy.on("proxyRes", function (proxyRes, request, response) {
+            endpointLogger.info(_this.endpoint.host + " " + request.connection.remoteAddress + " " + _this.logTarget + " - " + new Date().toISOString() + " \"" + (request.method + " " + request.url + " HTTP/" + request.httpVersion) + "\" " + proxyRes.statusCode + " - " + (request.headers.referer ? "\"" + request.headers.referer + "\"" : "-") + " " + (request.headers["user-agent"] ? "\"" + request.headers["user-agent"] + "\"" : "-"));
         });
     }
     ProxyNode.prototype.web = function (request, response) {
@@ -199,3 +216,6 @@ var ProxyNode = (function () {
     };
     return ProxyNode;
 }());
+function printRequest(request) {
+    return (request.connection.remoteAddress || "-") + " " + (request.url || "-");
+}

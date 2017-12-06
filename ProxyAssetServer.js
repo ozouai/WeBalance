@@ -5,6 +5,6 @@ var FileController = require("./FileController");
 var app = express();
 var ejs_noRoute = FileController.compileEJS("proxy-assets/ejs/noRoute.ejs");
 app.get("*", function (req, res) {
-    res.send(ejs_noRoute({ host: req.host }));
+    res.send(ejs_noRoute({ host: req.hostname }));
 });
 app.listen(5001);
