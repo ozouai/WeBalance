@@ -4,12 +4,16 @@ var tls = require("tls");
 var fs = require("fs");
 var path = require("path");
 var forge = require("node-forge");
+var winston = require("winston");
+var safeSave = require("./SafeSave");
+var logger = winston.loggers.get("SSL");
 var CertificateStorage = (function () {
     function CertificateStorage() {
         this.compiledContexts = {};
         this.certStore = {};
         //if(!fs.existsSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`))) fs.mkdirSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`));
         if (!fs.existsSync(path.normalize(process.env.CONFIG_DIR + "/certs.json"))) {
+            logger.info("Can't find certificate json, recreating");
             var keys = forge.pki.rsa.generateKeyPair(2048);
             var cert = forge.pki.createCertificate();
             cert.publicKey = keys.publicKey;
@@ -83,10 +87,12 @@ var CertificateStorage = (function () {
                 key: this.defaultKey,
                 cert: this.defaultCert
             });
+            logger.info("Created Default Certificate");
             this.save();
         }
         else {
             var d = JSON.parse(fs.readFileSync(path.normalize(process.env.CONFIG_DIR + "/certs.json"), "utf-8"));
+            logger.info("Loaded Certificate JSON with " + Object.keys(d.certs).length + " certificates");
             this.defaultKey = d.default.key;
             this.defaultCert = d.default.cert;
             this.certStore = d.certs;
@@ -120,6 +126,7 @@ var CertificateStorage = (function () {
             ca: chain
         };
         this.compiledContexts[domain] = context;
+        logger.verbose("Registered new certificate for domain '" + domain + "'");
         this.save();
     };
     CertificateStorage.prototype.SNIHook = function () {
@@ -139,7 +146,8 @@ var CertificateStorage = (function () {
             },
             certs: this.certStore
         };
-        fs.writeFileSync(path.normalize(process.env.CONFIG_DIR + "/certs.json"), JSON.stringify(d));
+        safeSave.saveSync(path.normalize(process.env.CONFIG_DIR + "/certs.json"), JSON.stringify(d));
+        logger.verbose("Saved config file");
     };
     CertificateStorage.prototype._SNIHook = function (domain, cb) {
         if (this.compiledContexts[domain]) {
@@ -151,7 +159,7 @@ var CertificateStorage = (function () {
             }
         }
         else {
-            console.log("None Exist");
+            logger.error("Can't find certificate for domain '" + domain + "'");
             if (cb)
                 cb(null, this.defaultContext);
             else {
