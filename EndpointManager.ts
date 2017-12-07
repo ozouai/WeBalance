@@ -2,9 +2,15 @@ import * as httpProxy from "http-proxy";
 import * as path from "path";
 import * as fs from "fs";
 import * as winston from "winston";
+import * as securePin from "secure-pin";
+import * as crypto from "crypto";
+const charset = new securePin.CharSet();
+charset.addNumeric().addUpperCaseAlpha().addLowerCaseAlpha().randomize();
 import {IncomingMessage, ServerResponse} from "http";
+import {md} from "node-forge";
 const endpointLogger = winston.loggers.get("Endpoint");
 const managerLogger = winston.loggers.get("EndpointManager");
+
 export class EndpointManager {
     private endpoints: {
         [key: string]: Endpoint
@@ -104,15 +110,30 @@ export class EndpointManager {
         }
     }
 }
+
+export interface BasicUser {
+    username: string;
+    password: string;
+}
+
 export interface EndpointOptions{
     targets: Array<string>;
     http: boolean;
     https: boolean;
     allowSelfSigned: boolean;
     enabled: boolean;
-    routingStrategy: "roundRobin"
+    routingStrategy: "roundRobin",
+    authorization: "none" | "basic" | "digest";
+    users: {
+        [key: string]: BasicUser
+    }
 }
-
+function md5(data: any) {
+    return crypto.createHash("md5").update(data).digest("hex");
+}
+const opaque = md5("Secure Area");
+const digestRegex = /([a-zA-Z]+)="(.*?)"/;
+const cnonceRegex = /nc=([0-9a-z]+)/;
 export class Endpoint {
     public host: string;
     public options: EndpointOptions;
@@ -120,6 +141,11 @@ export class Endpoint {
     private proxies: Array<ProxyNode> = [];
     private roundRobinIndex = 0;
     private roundRobinSocketIndex = 0;
+    private nonces: {
+        [key: string]: {
+
+        }
+    }
     constructor(host: string, endpointContainer: EndpointManager, options: EndpointOptions) {
         this.host = host;
         this.options = options;
@@ -127,7 +153,72 @@ export class Endpoint {
         this.restart();
     }
 
-    public route(request, response){
+    private failAuth(request: IncomingMessage, response: ServerResponse) {
+        response.statusCode = 401;
+        if(this.options.authorization == "basic") {
+            response.setHeader("WWW-Authenticate", "Basic realm=\"Secure Area\"");
+            response.end("<!DOCTYPE html><html><body>Authorization Required</body></html>");
+            return;
+        }
+        if(this.options.authorization == "digest") {
+            return securePin.generateString(20, charset, (nonce)=>{
+                response.setHeader("WWW-Authenticate", `Digest realm="Secure Area",qop="auth",nonce="${nonce}",opaque="${opaque}"`);
+                response.end("<!DOCTYPE html><html><body>Authorization Required</body></html>");
+                return;
+            })
+
+        }
+    }
+
+    public route(request:IncomingMessage, response : ServerResponse){
+
+        if(this.options.authorization && this.options.authorization != "none") {
+            if(!request.headers["authorization"]) {
+                return this.failAuth(request, response);
+            } else {
+                if(!this.options.users) {
+                    endpointLogger.error("No Users"); //TODO better error
+                    response.end("No Users");
+                    return;
+                }
+                let header = request.headers["authorization"];
+                let method = header.split(" ")[0];
+                console.log(header);
+                if(this.options.authorization == "basic") {
+                    if(method.toLowerCase().trim() != "basic") return this.failAuth(request, response);
+                    let base = header[1];
+                    let debased = new Buffer(base, "base64").toString().split(":");
+                    let username = debased[0];
+                    let password = debased[1];
+                    if(!this.options.users[username]) return this.failAuth(request, response);
+                    if(this.options.users[username].password != password) return this.failAuth(request, response);
+                    request.username = username;
+                } else if(this.options.authorization == "digest") {
+                    if(method.toLowerCase().trim() != "digest") return this.failAuth(request, response);
+                    let r_result = digestRegex.exec(header);
+                    let data = {};
+                    while(r_result) {
+                        data[r_result[1]] = r_result[2];
+                        header = header.replace(r_result[0], "");
+                        r_result = digestRegex.exec(header);
+                    }
+                    data["nonceCount"] = cnonceRegex.exec(header)[1];
+                    if(!this.options.users[data["username"]]) return this.failAuth(request, response);
+                    let ha1 = md5(`${data["username"]}:${"Secure Area"}:${this.options.users[data["username"]].password}`);
+                    let ha2 = md5(`${request.method}:${request.url}`);
+                    let hash = md5(`${ha1}:${data["nonce"]}:${data["nonceCount"]}:${data["cnonce"]}:${"auth"}:${ha2}`);
+                    if(hash != data["response"]) {
+                        return this.failAuth(request, response);
+                    }
+                } else {
+                    return this.failAuth(request, response);;
+                }
+                request.headers.authorization = null;
+                request.headers["authorization"] = null;
+                request.rawHeaders.splice(request.rawHeaders.indexOf("Authorization"), 2);
+                console.log(request.rawHeaders);
+            }
+        }
         if(!this.hasAliveHosts()) {
             return this.endpointContainer.locateEndpointForHost("default").route(request, response);
         }
@@ -222,7 +313,7 @@ class ProxyNode {
         });
         this.logTarget = this.target.replace("http://", "").replace("https://", "");
         this.proxy.on("proxyRes", (proxyRes, request : IncomingMessage, response : ServerResponse) =>{
-            endpointLogger.info(`${this.endpoint.host} ${request.connection.remoteAddress} ${this.logTarget} - ${new Date().toISOString()} "${request.method +" "+request.url + " HTTP/"+request.httpVersion}" ${proxyRes.statusCode} - ${request.headers.referer ? "\""+request.headers.referer+"\"" : "-"} ${request.headers["user-agent"] ? "\""+request.headers["user-agent"]+"\"" : "-"}` )
+            endpointLogger.info(`${this.endpoint.host} ${request.connection.remoteAddress} ${this.logTarget} ${(request as any).username || "-"} ${new Date().toISOString()} "${request.method +" "+request.url + " HTTP/"+request.httpVersion}" ${proxyRes.statusCode} - ${request.headers.referer ? "\""+request.headers.referer+"\"" : "-"} ${request.headers["user-agent"] ? "\""+request.headers["user-agent"]+"\"" : "-"}` )
         })
     }
 

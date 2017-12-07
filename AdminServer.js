@@ -13,5 +13,8 @@ function bind(endpoints, certificates) {
     app.get("/api/endpoints", function (req, res) {
         res.json(endpoints.getEndpoints());
     });
+    app.get("*", function (req, res) {
+        res.send(home_ejs({}));
+    });
 }
 exports.bind = bind;

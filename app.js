@@ -40,9 +40,11 @@ var path = require("path");
 var EndpointManager_1 = require("./EndpointManager");
 require("./ProxyAssetServer");
 var AdminServer = require("./AdminServer");
+var LetsEncrypt = require("./LetsEncryptAgent");
 var certStore = new CertificateStorage_1.CertificateStorage();
 var proxy = httpProxy.createProxyServer({});
 var endpoints = new EndpointManager_1.EndpointManager();
+var leAgent = new LetsEncrypt.LetsEncryptAgent(certStore);
 //var acmeServ = serveStatic( path.normalize(`${process.env.CONFIG_DIR}/acme/`));
 var server = http.createServer(function (request, response) {
     var check = request.url.split("/");
@@ -65,10 +67,6 @@ var server = http.createServer(function (request, response) {
     }
     //proxy.web(request, response, {target: "http://127.0.0.1:8080", secure: false});
     endpoints.route(request, response);
-});
-endpoints.addEndpoint("unms.omarzouai.com", {
-    targets: ["https://192.168.1.178"], routingStrategy: "roundRobin",
-    http: false, https: true, allowSelfSigned: true, enabled: true
 });
 server.listen(80);
 server.on("upgrade", function (request, socket, head) {

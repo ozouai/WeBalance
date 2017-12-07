@@ -4,6 +4,10 @@ var httpProxy = require("http-proxy");
 var path = require("path");
 var fs = require("fs");
 var winston = require("winston");
+var securePin = require("secure-pin");
+var crypto = require("crypto");
+var charset = new securePin.CharSet();
+charset.addNumeric().addUpperCaseAlpha().addLowerCaseAlpha().randomize();
 var endpointLogger = winston.loggers.get("Endpoint");
 var managerLogger = winston.loggers.get("EndpointManager");
 var EndpointManager = (function () {
@@ -104,6 +108,12 @@ var EndpointManager = (function () {
     return EndpointManager;
 }());
 exports.EndpointManager = EndpointManager;
+function md5(data) {
+    return crypto.createHash("md5").update(data).digest("hex");
+}
+var opaque = md5("Secure Area");
+var digestRegex = /([a-zA-Z]+)="(.*?)"/;
+var cnonceRegex = /nc=([0-9a-z]+)/;
 var Endpoint = (function () {
     function Endpoint(host, endpointContainer, options) {
         this.proxies = [];
@@ -114,7 +124,78 @@ var Endpoint = (function () {
         this.endpointContainer = endpointContainer;
         this.restart();
     }
+    Endpoint.prototype.failAuth = function (request, response) {
+        response.statusCode = 401;
+        if (this.options.authorization == "basic") {
+            response.setHeader("WWW-Authenticate", "Basic realm=\"Secure Area\"");
+            response.end("<!DOCTYPE html><html><body>Authorization Required</body></html>");
+            return;
+        }
+        if (this.options.authorization == "digest") {
+            return securePin.generateString(20, charset, function (nonce) {
+                response.setHeader("WWW-Authenticate", "Digest realm=\"Secure Area\",qop=\"auth\",nonce=\"" + nonce + "\",opaque=\"" + opaque + "\"");
+                response.end("<!DOCTYPE html><html><body>Authorization Required</body></html>");
+                return;
+            });
+        }
+    };
     Endpoint.prototype.route = function (request, response) {
+        if (this.options.authorization && this.options.authorization != "none") {
+            if (!request.headers["authorization"]) {
+                return this.failAuth(request, response);
+            }
+            else {
+                if (!this.options.users) {
+                    endpointLogger.error("No Users"); //TODO better error
+                    response.end("No Users");
+                    return;
+                }
+                var header = request.headers["authorization"];
+                var method = header.split(" ")[0];
+                console.log(header);
+                if (this.options.authorization == "basic") {
+                    if (method.toLowerCase().trim() != "basic")
+                        return this.failAuth(request, response);
+                    var base = header[1];
+                    var debased = new Buffer(base, "base64").toString().split(":");
+                    var username = debased[0];
+                    var password = debased[1];
+                    if (!this.options.users[username])
+                        return this.failAuth(request, response);
+                    if (this.options.users[username].password != password)
+                        return this.failAuth(request, response);
+                    request.username = username;
+                }
+                else if (this.options.authorization == "digest") {
+                    if (method.toLowerCase().trim() != "digest")
+                        return this.failAuth(request, response);
+                    var r_result = digestRegex.exec(header);
+                    var data = {};
+                    while (r_result) {
+                        data[r_result[1]] = r_result[2];
+                        header = header.replace(r_result[0], "");
+                        r_result = digestRegex.exec(header);
+                    }
+                    data["nonceCount"] = cnonceRegex.exec(header)[1];
+                    if (!this.options.users[data["username"]])
+                        return this.failAuth(request, response);
+                    var ha1 = md5(data["username"] + ":" + "Secure Area" + ":" + this.options.users[data["username"]].password);
+                    var ha2 = md5(request.method + ":" + request.url);
+                    var hash = md5(ha1 + ":" + data["nonce"] + ":" + data["nonceCount"] + ":" + data["cnonce"] + ":" + "auth" + ":" + ha2);
+                    if (hash != data["response"]) {
+                        return this.failAuth(request, response);
+                    }
+                }
+                else {
+                    return this.failAuth(request, response);
+                    ;
+                }
+                request.headers.authorization = null;
+                request.headers["authorization"] = null;
+                request.rawHeaders.splice(request.rawHeaders.indexOf("Authorization"), 2);
+                console.log(request.rawHeaders);
+            }
+        }
         if (!this.hasAliveHosts()) {
             return this.endpointContainer.locateEndpointForHost("default").route(request, response);
         }
@@ -198,7 +279,7 @@ var ProxyNode = (function () {
         });
         this.logTarget = this.target.replace("http://", "").replace("https://", "");
         this.proxy.on("proxyRes", function (proxyRes, request, response) {
-            endpointLogger.info(_this.endpoint.host + " " + request.connection.remoteAddress + " " + _this.logTarget + " - " + new Date().toISOString() + " \"" + (request.method + " " + request.url + " HTTP/" + request.httpVersion) + "\" " + proxyRes.statusCode + " - " + (request.headers.referer ? "\"" + request.headers.referer + "\"" : "-") + " " + (request.headers["user-agent"] ? "\"" + request.headers["user-agent"] + "\"" : "-"));
+            endpointLogger.info(_this.endpoint.host + " " + request.connection.remoteAddress + " " + _this.logTarget + " " + (request.username || "-") + " " + new Date().toISOString() + " \"" + (request.method + " " + request.url + " HTTP/" + request.httpVersion) + "\" " + proxyRes.statusCode + " - " + (request.headers.referer ? "\"" + request.headers.referer + "\"" : "-") + " " + (request.headers["user-agent"] ? "\"" + request.headers["user-agent"] + "\"" : "-"));
         });
     }
     ProxyNode.prototype.web = function (request, response) {
