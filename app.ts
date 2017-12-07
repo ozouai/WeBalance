@@ -41,10 +41,11 @@ import * as serveStatic from "serve-static";
 import {EndpointManager} from "./EndpointManager";
 import "./ProxyAssetServer";
 import * as AdminServer from "./AdminServer";
-
+import * as LetsEncrypt from "./LetsEncryptAgent";
 var certStore = new CertificateStorage();
 var proxy = httpProxy.createProxyServer({});
 var endpoints = new EndpointManager();
+const leAgent = new LetsEncrypt.LetsEncryptAgent(certStore);
 //var acmeServ = serveStatic( path.normalize(`${process.env.CONFIG_DIR}/acme/`));
 var server = http.createServer(function(request, response) {
     var check = request.url.split("/");
@@ -68,9 +69,6 @@ var server = http.createServer(function(request, response) {
     endpoints.route(request, response);
 });
 
-endpoints.addEndpoint("unms.omarzouai.com", {
-    targets: ["https://192.168.1.178"], routingStrategy: "roundRobin",
- http: false, https:true, allowSelfSigned: true, enabled: true});
 
 server.listen(80);
 

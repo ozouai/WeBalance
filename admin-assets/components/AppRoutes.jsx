@@ -11,8 +11,10 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
+var react_router_1 = require("react-router");
 var react_router_dom_1 = require("react-router-dom");
-var routes_1 = require("../routes");
+var EndpointContainer_1 = require("./EndpointContainer");
+var EndpointView_1 = require("./EndpointView");
 var AppRoutes = (function (_super) {
     __extends(AppRoutes, _super);
     function AppRoutes() {
@@ -20,7 +22,10 @@ var AppRoutes = (function (_super) {
     }
     AppRoutes.prototype.render = function () {
         return (<react_router_dom_1.BrowserRouter>
-                {routes_1.default}
+                <react_router_1.Switch>
+                    <react_router_dom_1.Route path={"/endpoint/:id"} component={EndpointView_1.default}/>
+                    <react_router_dom_1.Route path={"/"} component={EndpointContainer_1.default}/>
+                </react_router_1.Switch>
             </react_router_dom_1.BrowserRouter>);
     };
     return AppRoutes;

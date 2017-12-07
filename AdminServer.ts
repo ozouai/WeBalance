@@ -21,4 +21,9 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
     })
 
 
+
+    app.get("*", (req, res) => {
+        res.send(home_ejs({}));
+    });
+
 }
