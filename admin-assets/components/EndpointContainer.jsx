@@ -11,8 +11,9 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
-var Endpoint_1 = require("./Endpoint");
+var react_router_dom_1 = require("react-router-dom");
 var axios_1 = require("axios");
+var DefaultLayout_1 = require("./DefaultLayout");
 var EndpointContainer = (function (_super) {
     __extends(EndpointContainer, _super);
     function EndpointContainer(props) {
@@ -23,11 +24,13 @@ var EndpointContainer = (function (_super) {
         return _this;
     }
     EndpointContainer.prototype.render = function () {
-        return (<div role={"tablist"} id={"endpointAccordion"}>
+        return (<DefaultLayout_1.default>
+            <div role={"tablist"} id={"endpointAccordion"}>
                 {this.state.Endpoints.map(function (item, index) {
-            return (<Endpoint_1.default Host={item.host} Target={item.options.target}/>);
+            return (<div><react_router_dom_1.Link to={"/endpoint/" + item.host}>{item.host}</react_router_dom_1.Link><br /></div>);
         })}
-            </div>);
+            </div>
+            </DefaultLayout_1.default>);
     };
     EndpointContainer.prototype.componentDidMount = function () {
         var _this = this;
