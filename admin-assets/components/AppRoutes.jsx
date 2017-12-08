@@ -21,12 +21,14 @@ var AppRoutes = (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     AppRoutes.prototype.render = function () {
-        return (<react_router_dom_1.BrowserRouter>
+        return (<div>
+            <react_router_dom_1.BrowserRouter>
                 <react_router_1.Switch>
                     <react_router_dom_1.Route path={"/endpoint/:id"} component={EndpointView_1.default}/>
                     <react_router_dom_1.Route path={"/"} component={EndpointContainer_1.default}/>
                 </react_router_1.Switch>
-            </react_router_dom_1.BrowserRouter>);
+            </react_router_dom_1.BrowserRouter>
+            </div>);
     };
     return AppRoutes;
 }(React.Component));

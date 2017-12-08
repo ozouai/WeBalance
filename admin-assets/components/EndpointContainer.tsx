@@ -1,6 +1,8 @@
 import * as React from 'react';
 import Endpoint from "./Endpoint";
+import {Link} from "react-router-dom";
 import axios from 'axios';
+import DefaultLayout from "./DefaultLayout";
 export interface EndpointContainerState {
     Endpoints: Array<{
         host: string,
@@ -20,11 +22,13 @@ export default class EndpointContainer extends React.Component<{}, EndpointConta
     }
     render() {
         return(
+            <DefaultLayout>
             <div role={"tablist"} id={"endpointAccordion"}>
                 {this.state.Endpoints.map((item, index)=>{
-                    return(<Endpoint Host={item.host} Target={item.options.target}/>)
+                    return(<div><Link to={`/endpoint/${item.host}`}>{item.host}</Link><br/></div>)
                 })}
             </div>
+            </DefaultLayout>
         )
     }
     componentDidMount() {
