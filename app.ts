@@ -44,8 +44,9 @@ import * as AdminServer from "./AdminServer";
 import * as LetsEncrypt from "./LetsEncryptAgent";
 var certStore = new CertificateStorage();
 var proxy = httpProxy.createProxyServer({});
-var endpoints = new EndpointManager();
+
 const leAgent = new LetsEncrypt.LetsEncryptAgent(certStore);
+var endpoints = new EndpointManager(certStore, leAgent);
 //var acmeServ = serveStatic( path.normalize(`${process.env.CONFIG_DIR}/acme/`));
 var server = http.createServer(function(request, response) {
     var check = request.url.split("/");

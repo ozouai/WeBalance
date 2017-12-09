@@ -9,11 +9,15 @@ export class CertificateStorage {
     private compiledContexts : {
         [key: string]: tls.SecureContext
     } = {};
+    private contextLookup : {
+        [key: string]: tls.SecureContext
+    } = {};
     private certStore: {
         [key: string]: {
+            friendlyName: string,
             key: string,
             cert: string,
-            ca: string
+            ca: string,
         }
     } = {};
     private initialize() {
@@ -22,6 +26,16 @@ export class CertificateStorage {
     private defaultKey: string;
     private defaultCert: string;
     private defaultContext: tls.SecureContext;
+    public getCertList(): Array<{key: string, name: string}> {
+        let results = [];
+        for(let key of Object.keys(this.certStore)) {
+            let cert = this.certStore[key];
+            let o = {key: key, name: key};
+            if(cert.friendlyName) o.name = cert.friendlyName;
+            results.push(o);
+        }
+        return results;
+    }
     constructor() {
         //if(!fs.existsSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`))) fs.mkdirSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`));
         if(!fs.existsSync(path.normalize(`${process.env.CONFIG_DIR}/certs.json`))) {
@@ -98,6 +112,7 @@ export class CertificateStorage {
                 key: this.defaultKey,
                 cert: this.defaultCert
             });
+            this.compiledContexts["default"] = this.defaultContext;
             logger.info("Created Default Certificate");
             this.save();
         } else {
@@ -110,6 +125,7 @@ export class CertificateStorage {
                 key: this.defaultKey,
                 cert: this.defaultCert
             });
+            this.compiledContexts["default"] = this.defaultContext;
             for(var key of Object.keys(this.certStore)) {
                 let context = tls.createSecureContext({
                     key: this.certStore[key].key,
@@ -121,20 +137,29 @@ export class CertificateStorage {
         }
     }
 
-    public registerKey(domain: string, privKey: string, cert: string, chain: string) {
+    public registerKey(name: string, privKey: string, cert: string, chain: string) {
         let context = tls.createSecureContext({
             key: privKey,
             cert: cert,
             ca: chain
         });
-        this.certStore[domain] = {
+        this.certStore[name] = {
             key: privKey,
             cert: cert,
             ca: chain
         };
-        this.compiledContexts[domain] = context;
-        logger.verbose("Registered new certificate for domain '"+domain+"'");
+        this.compiledContexts[name] = context;
+        logger.verbose("Registered new certificate named '"+name+"'");
         this.save();
+    }
+
+    public hasCertForKey(key: string) : boolean {
+        if(this.compiledContexts[key]) return true;
+        return false;
+    }
+
+    public addCertToDomain(domain: string, cert: string) {
+        this.contextLookup[domain] = this.compiledContexts[cert];
     }
 
     public SNIHook(): (domain, cb) =>void {
@@ -161,11 +186,11 @@ export class CertificateStorage {
     }
 
     private _SNIHook(domain, cb) {
-        if(this.compiledContexts[domain]) {
+        if(this.contextLookup[domain]) {
             if(cb) {
-                cb(null, this.compiledContexts[domain]);
+                cb(null, this.contextLookup[domain]);
             } else{
-                return this.compiledContexts[domain];
+                return this.contextLookup[domain];
             }
         } else {
             logger.error("Can't find certificate for domain '"+domain+"'");

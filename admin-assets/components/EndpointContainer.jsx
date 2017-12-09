@@ -27,7 +27,45 @@ var EndpointContainer = (function (_super) {
         return (<DefaultLayout_1.default>
             <div role={"tablist"} id={"endpointAccordion"}>
                 {this.state.Endpoints.map(function (item, index) {
-            return (<div><react_router_dom_1.Link to={"/endpoint/" + item.host}>{item.host}</react_router_dom_1.Link><br /></div>);
+            var warning = item.targetsAlive != item.targets;
+            var error = item.targetsAlive == 0;
+            var mainClasses = "row endpointHomeView";
+            var icon = "check";
+            if (warning && !error) {
+                mainClasses += " warning";
+                icon = "exclamation";
+            }
+            else if (error) {
+                mainClasses += " error";
+                icon = "ban";
+            }
+            return (<div className={mainClasses}>
+                            <div className={"col-sm-2 text-center badgeCol"}>
+                                <span className={"fa-layers"}>
+                                    <i className={"fas fa-shield-alt"} data-fa-transform="grow-3"></i>
+                                    <i className={"fas fa-" + icon} data-fa-transform="shrink-6"></i>
+                                </span>
+
+                            </div>
+                            <div className={"col-sm-5"}>
+                                <b className={"name"}>{item.friendlyName}</b> <small className={"text-muted"}>- {item.endpoint}</small>
+                            </div>
+                            <div className={"col-sm-2 text-center"}>
+                                {item.targetsAlive} / {item.targets} <small>Targets Online</small>
+                            </div>
+                            <div className={"col-sm-3 text-right"}>
+                                <span className={"btn-group"}>
+                                    <react_router_dom_1.Link to={"/endpoint/" + item.endpoint} className={"btn btn-warning"}>
+                                        Edit
+                                    </react_router_dom_1.Link>
+                                    <react_router_dom_1.Link to={"/stats/" + item.endpoint} className={"btn btn-primary"}>
+                                        View Stats
+                                    </react_router_dom_1.Link>
+
+                                </span>
+                            </div>
+                            <br />
+                        </div>);
         })}
             </div>
             </DefaultLayout_1.default>);
