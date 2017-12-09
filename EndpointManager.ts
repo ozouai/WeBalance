@@ -5,9 +5,14 @@ import * as winston from "winston";
 import * as securePin from "secure-pin";
 import * as crypto from "crypto";
 const charset = new securePin.CharSet();
+import {IncomingMessage, profile} from "./StatsCollector";
+
 charset.addNumeric().addUpperCaseAlpha().addLowerCaseAlpha().randomize();
-import {IncomingMessage, ServerResponse} from "http";
+import {ServerResponse} from "http";
 import {md} from "node-forge";
+import {CertificateStorage} from "./CertificateStorage";
+import {type} from "os";
+import {LetsEncryptAgent} from "./LetsEncryptAgent";
 const endpointLogger = winston.loggers.get("Endpoint");
 const managerLogger = winston.loggers.get("EndpointManager");
 
@@ -15,13 +20,24 @@ export class EndpointManager {
     private endpoints: {
         [key: string]: Endpoint
     } = {};
-
-    constructor() {
+    public certStore : CertificateStorage;
+    public letsEncrypt: LetsEncryptAgent;
+    constructor(certStore: CertificateStorage, letsEncrypt : LetsEncryptAgent) {
+        this.certStore = certStore;
+        this.letsEncrypt = letsEncrypt;
         if(fs.existsSync(path.normalize(`${process.env.CONFIG_DIR}/endpoints.json`))) {
             let d = JSON.parse(fs.readFileSync(path.normalize(`${process.env.CONFIG_DIR}/endpoints.json`), "UTF-8"));
             for(let e of d) {
                 let ne = new Endpoint(e.host,this, e.options);
                 this.endpoints[e.host] = ne;
+                if(!ne.options.sslCert) {
+                    this.certStore.addCertToDomain(e.host, "default");
+                    console.log("Setting to default");
+                } else if(ne.options.sslCert != "default") {
+                    this.certStore.addCertToDomain(e.host, ne.options.sslCert);
+                } else {
+                    this.certStore.addCertToDomain(e.host, "default");
+                }
             }
         }
         if(!this.endpoints["default"]) {
@@ -31,7 +47,11 @@ export class EndpointManager {
                 https:true,
                 allowSelfSigned: true,
                 enabled: true,
-                routingStrategy: "roundRobin"
+                routingStrategy: "roundRobin",
+                sslCert: "default",
+                authorization: "none",
+                friendlyName: "Default Endpoint",
+                users: {}
             });
         }
     }
@@ -40,13 +60,32 @@ export class EndpointManager {
         return (Object as any).values(this.endpoints);
     }
 
+    public getEndpointsWithStatus(): Array<SharedInterfaces.EndpointsWithStatus> {
+        let r = [];
+        for(let key of Object.keys(this.endpoints)) {
+            let end = this.endpoints[key];
+            r.push({
+                endpoint: key,
+                friendlyName: end.options.friendlyName || key,
+                targetsAlive: end.countAliveHosts(),
+                targets: end.options.targets.length,
+                errors: []
+            });
+        }
+
+        return r;
+    }
+
     public addEndpoint(host: string, options: EndpointOptions) {
         let endpoint = new Endpoint(host, this, options);
         this.endpoints[host] = endpoint;
         this.save();
     }
 
-    public route(request, response) {
+    public route(request : IncomingMessage, response) {
+        let start = process.hrtime();
+        request.profiler = {};
+        request.profiler.start = process.hrtime();
         let endpoint = this.locateEndpointForRequest(request);
         if(endpoint.options.http) {
             endpoint.route(request, response);
@@ -64,6 +103,8 @@ export class EndpointManager {
     }
 
     public routeSecure(request, response) {
+        request.profiler = {};
+        request.profiler.start = process.hrtime();
         let endpoint = this.locateEndpointForRequest(request);
         if(endpoint.options.https) {
             endpoint.route(request, response);
@@ -99,8 +140,7 @@ export class EndpointManager {
     }
 
     public locateEndpointForHost(host: string) : Endpoint {
-        if(this.endpoints[host]) return this.endpoints[host];
-        return this.endpoints["default"];
+        return this.endpoints[host];
     }
     public locateEndpointForRequest(request: any) {
         if(this.endpoints[request.headers.host]) return this.endpoints[request.headers.host];
@@ -124,6 +164,8 @@ export interface EndpointOptions{
     enabled: boolean;
     routingStrategy: "roundRobin",
     authorization: "none" | "basic" | "digest";
+    friendlyName: string,
+    sslCert: string,
     users: {
         [key: string]: BasicUser
     }
@@ -146,6 +188,69 @@ export class Endpoint {
 
         }
     }
+    public updateOptions(newTree: EndpointOptions, cb:(res:{success: boolean, error: Array<string>})=>void)  {
+        let errors = [];
+        for(let key of Object.keys(newTree)) {
+            switch(key) {
+                case "sslCert":
+                    if(newTree[key] != "default" && newTree[key] !="letsEncrypt") {
+                        if(!this.endpointContainer.certStore.hasCertForKey(newTree[key])) {
+                            errors.push("'sslCert' not found");
+                        }
+                    }
+                    break;
+                case "http":
+                    if(typeof newTree[key] != "boolean") errors.push("'http' invalid setting");
+                    break;
+                case "https":
+                    if(typeof newTree[key] != "boolean") errors.push("'https' invalid setting");
+                case "allowSelfSigned":
+                    if(typeof newTree[key] != "boolean") errors.push("'allowSelfSigned' invalid setting");
+                    break;
+                case "authorization":
+                    if(typeof newTree[key] != "string") errors.push("'authorization' invalid setting");
+                    else {
+                        if(newTree[key] != "none" && newTree[key] != "basic" && newTree[key] != "digest") errors.push("'authorization' invalid setting");
+                    }
+                    break;
+
+            }
+        }
+        if(errors.length > 0) {
+            return cb({success: false, error: errors});
+        }
+        for(let key of Object.keys(newTree)) {
+            switch(key){
+                case "sslCert":
+                    if(newTree[key] == "letsEncrypt") {
+                        this.endpointContainer.letsEncrypt.register(this.host, "", (e)=>{
+
+                        })
+                    } else if(newTree[key] == "default") {
+                        this.options.sslCert = "default";
+                        this.endpointContainer.certStore.addCertToDomain(this.host, "default");
+                    } else {
+                        this.options.sslCert = newTree[key];
+                        this.endpointContainer.certStore.addCertToDomain(this.host, newTree[key]);
+                    }
+
+                    break;
+                case "http":
+                    this.options.http = newTree[key];
+                    break;
+                case "https":
+                    this.options.https = newTree[key];
+                    break;
+                case "allowSelfSigned":
+                    this.options.allowSelfSigned = newTree[key];
+                    break;
+            }
+        }
+        this.endpointContainer.save();
+        return cb({success: true, error:[]});
+    }
+
+
     constructor(host: string, endpointContainer: EndpointManager, options: EndpointOptions) {
         this.host = host;
         this.options = options;
@@ -171,7 +276,8 @@ export class Endpoint {
     }
 
     public route(request:IncomingMessage, response : ServerResponse){
-
+        if(!request.profiler) request.profiler = {start:process.hrtime()};
+        request.profiler.host = this.host;
         if(this.options.authorization && this.options.authorization != "none") {
             if(!request.headers["authorization"]) {
                 return this.failAuth(request, response);
@@ -272,6 +378,14 @@ export class Endpoint {
         return false;
     }
 
+    public countAliveHosts(): number {
+        let alive = 0;
+        for(let node of this.proxies) {
+            if(node.alive) alive++;
+        }
+        return alive;
+    }
+
     public restart() {
         this.proxies = [];
         for(var target of this.options.targets) {
@@ -302,11 +416,16 @@ class ProxyNode {
     public endpoint: Endpoint;
     public allowSelfSigned: boolean;
     private logTarget: string;
+    private errors: Array<string>;
     public constructor(target: string, allowSelfSigned: boolean, endpoint: Endpoint) {
         this.target = target;
         this.allowSelfSigned = allowSelfSigned;
         this.alive = true;
         this.endpoint = endpoint;
+        this.reloadProxy();
+    }
+
+    public reloadProxy() {
         this.proxy = httpProxy.createProxyServer({
             target: this.target,
             secure: !this.allowSelfSigned
@@ -314,17 +433,26 @@ class ProxyNode {
         this.logTarget = this.target.replace("http://", "").replace("https://", "");
         this.proxy.on("proxyRes", (proxyRes, request : IncomingMessage, response : ServerResponse) =>{
             endpointLogger.info(`${this.endpoint.host} ${request.connection.remoteAddress} ${this.logTarget} ${(request as any).username || "-"} ${new Date().toISOString()} "${request.method +" "+request.url + " HTTP/"+request.httpVersion}" ${proxyRes.statusCode} - ${request.headers.referer ? "\""+request.headers.referer+"\"" : "-"} ${request.headers["user-agent"] ? "\""+request.headers["user-agent"]+"\"" : "-"}` )
+            request.profiler.proxyEnd = process.hrtime(request.profiler.proxyStart);
+            request.profiler.end = process.hrtime(request.profiler.start);
+            request.profiler.responseCode = proxyRes.statusCode
+            profile(request);
+            if(proxyRes.statusCode == 500) {
+                this.errors.push("500 error");
+            }
+        })
+        this.proxy.on("error", (e, request, response)=>{
+            console.log(e);
+            this.alive = false;
+            this.endpoint.retry(request, response);
         })
     }
 
-    public web(request, response) {
-        this.proxy.web(request, response, {}, (e)=>{
-            if(e) {
-                console.log(e);
-                this.alive = false;
-                this.endpoint.retry(request, response);
-            }
-        });
+    public web(request : IncomingMessage, response) {
+        request.profiler.target = this.target;
+        request.profiler.proxyStart = process.hrtime();
+
+        this.proxy.web(request, response);
     }
     public ws(request, socket, head) {
         this.proxy.ws(request, socket, head);

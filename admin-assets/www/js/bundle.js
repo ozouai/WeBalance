@@ -24652,13 +24652,76 @@ var EndpointContainer = function (_super) {
                 "div",
                 { role: "tablist", id: "endpointAccordion" },
                 this.state.Endpoints.map(function (item, index) {
+                    var warning = item.targetsAlive != item.targets;
+                    var error = item.targetsAlive == 0;
+                    var mainClasses = "row endpointHomeView";
+                    var icon = "check";
+                    if (warning && !error) {
+                        mainClasses += " warning";
+                        icon = "exclamation";
+                    } else if (error) {
+                        mainClasses += " error";
+                        icon = "ban";
+                    }
                     return React.createElement(
                         "div",
-                        null,
+                        { className: mainClasses },
                         React.createElement(
-                            react_router_dom_1.Link,
-                            { to: "/endpoint/" + item.host },
-                            item.host
+                            "div",
+                            { className: "col-sm-2 text-center badgeCol" },
+                            React.createElement(
+                                "span",
+                                { className: "fa-layers" },
+                                React.createElement("i", { className: "fas fa-shield-alt", "data-fa-transform": "grow-3" }),
+                                React.createElement("i", { className: "fas fa-" + icon, "data-fa-transform": "shrink-6" })
+                            )
+                        ),
+                        React.createElement(
+                            "div",
+                            { className: "col-sm-5" },
+                            React.createElement(
+                                "b",
+                                { className: "name" },
+                                item.friendlyName
+                            ),
+                            " ",
+                            React.createElement(
+                                "small",
+                                { className: "text-muted" },
+                                "- ",
+                                item.endpoint
+                            )
+                        ),
+                        React.createElement(
+                            "div",
+                            { className: "col-sm-2 text-center" },
+                            item.targetsAlive,
+                            " / ",
+                            item.targets,
+                            " ",
+                            React.createElement(
+                                "small",
+                                null,
+                                "Targets Online"
+                            )
+                        ),
+                        React.createElement(
+                            "div",
+                            { className: "col-sm-3 text-right" },
+                            React.createElement(
+                                "span",
+                                { className: "btn-group" },
+                                React.createElement(
+                                    react_router_dom_1.Link,
+                                    { to: "/endpoint/" + item.endpoint, className: "btn btn-warning" },
+                                    "Edit"
+                                ),
+                                React.createElement(
+                                    react_router_dom_1.Link,
+                                    { to: "/stats/" + item.endpoint, className: "btn btn-primary" },
+                                    "View Stats"
+                                )
+                            )
                         ),
                         React.createElement("br", null)
                     );

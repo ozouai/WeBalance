@@ -10,6 +10,7 @@ var logger = winston.loggers.get("SSL");
 var CertificateStorage = (function () {
     function CertificateStorage() {
         this.compiledContexts = {};
+        this.contextLookup = {};
         this.certStore = {};
         //if(!fs.existsSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`))) fs.mkdirSync(path.normalize(`${process.env.CONFIG_DIR}/certs/`));
         if (!fs.existsSync(path.normalize(process.env.CONFIG_DIR + "/certs.json"))) {
@@ -87,6 +88,7 @@ var CertificateStorage = (function () {
                 key: this.defaultKey,
                 cert: this.defaultCert
             });
+            this.compiledContexts["default"] = this.defaultContext;
             logger.info("Created Default Certificate");
             this.save();
         }
@@ -100,6 +102,7 @@ var CertificateStorage = (function () {
                 key: this.defaultKey,
                 cert: this.defaultCert
             });
+            this.compiledContexts["default"] = this.defaultContext;
             for (var _i = 0, _a = Object.keys(this.certStore); _i < _a.length; _i++) {
                 var key = _a[_i];
                 var context = tls.createSecureContext({
@@ -114,20 +117,40 @@ var CertificateStorage = (function () {
     CertificateStorage.prototype.initialize = function () {
         this.compiledContexts = {};
     };
-    CertificateStorage.prototype.registerKey = function (domain, privKey, cert, chain) {
+    CertificateStorage.prototype.getCertList = function () {
+        var results = [];
+        for (var _i = 0, _a = Object.keys(this.certStore); _i < _a.length; _i++) {
+            var key = _a[_i];
+            var cert = this.certStore[key];
+            var o = { key: key, name: key };
+            if (cert.friendlyName)
+                o.name = cert.friendlyName;
+            results.push(o);
+        }
+        return results;
+    };
+    CertificateStorage.prototype.registerKey = function (name, privKey, cert, chain) {
         var context = tls.createSecureContext({
             key: privKey,
             cert: cert,
             ca: chain
         });
-        this.certStore[domain] = {
+        this.certStore[name] = {
             key: privKey,
             cert: cert,
             ca: chain
         };
-        this.compiledContexts[domain] = context;
-        logger.verbose("Registered new certificate for domain '" + domain + "'");
+        this.compiledContexts[name] = context;
+        logger.verbose("Registered new certificate named '" + name + "'");
         this.save();
+    };
+    CertificateStorage.prototype.hasCertForKey = function (key) {
+        if (this.compiledContexts[key])
+            return true;
+        return false;
+    };
+    CertificateStorage.prototype.addCertToDomain = function (domain, cert) {
+        this.contextLookup[domain] = this.compiledContexts[cert];
     };
     CertificateStorage.prototype.SNIHook = function () {
         return this._SNIHook.bind(this);
@@ -150,12 +173,12 @@ var CertificateStorage = (function () {
         logger.verbose("Saved config file");
     };
     CertificateStorage.prototype._SNIHook = function (domain, cb) {
-        if (this.compiledContexts[domain]) {
+        if (this.contextLookup[domain]) {
             if (cb) {
-                cb(null, this.compiledContexts[domain]);
+                cb(null, this.contextLookup[domain]);
             }
             else {
-                return this.compiledContexts[domain];
+                return this.contextLookup[domain];
             }
         }
         else {

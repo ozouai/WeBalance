@@ -1,0 +1,44 @@
+.endpointHomeView {
+  line-height: 80px;
+  margin-bottom: 15px;
+  margin-top: 15px;
+  background-color: #d8eed8;
+  border: 2px solid #4cae4c;
+  border-radius: 5px;
+}
+.endpointHomeView .badgeCol {
+  background-color: #5cb85c;
+  line-height: 40px;
+}
+.endpointHomeView .badgeCol > span {
+  line-height: 350px;
+  font-size: 60px;
+}
+.endpointHomeView .badgeCol > span .fa-shield-alt {
+  color: #41811e;
+}
+.endpointHomeView .badgeCol > span .fa-check,
+.endpointHomeView .badgeCol > span .fa-exclamation,
+.endpointHomeView .badgeCol > span .fa-ban {
+  color: #fff;
+}
+.endpointHomeView.warning {
+  background-color: #fef9f3;
+  border: 2px solid #eea236;
+}
+.endpointHomeView.warning .badgeCol {
+  background-color: #f0ad4e;
+}
+.endpointHomeView.warning .badgeCol > span .fa-shield-alt {
+  color: #b06d0f;
+}
+.endpointHomeView.error {
+  background-color: #f9e2e2;
+  border: 2px solid #d43f3a;
+}
+.endpointHomeView.error .badgeCol {
+  background-color: #d9534f;
+}
+.endpointHomeView.error .badgeCol > span .fa-shield-alt {
+  color: #8b211e;
+}

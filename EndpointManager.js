@@ -7,18 +7,31 @@ var winston = require("winston");
 var securePin = require("secure-pin");
 var crypto = require("crypto");
 var charset = new securePin.CharSet();
+var StatsCollector_1 = require("./StatsCollector");
 charset.addNumeric().addUpperCaseAlpha().addLowerCaseAlpha().randomize();
 var endpointLogger = winston.loggers.get("Endpoint");
 var managerLogger = winston.loggers.get("EndpointManager");
 var EndpointManager = (function () {
-    function EndpointManager() {
+    function EndpointManager(certStore, letsEncrypt) {
         this.endpoints = {};
+        this.certStore = certStore;
+        this.letsEncrypt = letsEncrypt;
         if (fs.existsSync(path.normalize(process.env.CONFIG_DIR + "/endpoints.json"))) {
             var d = JSON.parse(fs.readFileSync(path.normalize(process.env.CONFIG_DIR + "/endpoints.json"), "UTF-8"));
             for (var _i = 0, d_1 = d; _i < d_1.length; _i++) {
                 var e = d_1[_i];
                 var ne = new Endpoint(e.host, this, e.options);
                 this.endpoints[e.host] = ne;
+                if (!ne.options.sslCert) {
+                    this.certStore.addCertToDomain(e.host, "default");
+                    console.log("Setting to default");
+                }
+                else if (ne.options.sslCert != "default") {
+                    this.certStore.addCertToDomain(e.host, ne.options.sslCert);
+                }
+                else {
+                    this.certStore.addCertToDomain(e.host, "default");
+                }
             }
         }
         if (!this.endpoints["default"]) {
@@ -28,12 +41,31 @@ var EndpointManager = (function () {
                 https: true,
                 allowSelfSigned: true,
                 enabled: true,
-                routingStrategy: "roundRobin"
+                routingStrategy: "roundRobin",
+                sslCert: "default",
+                authorization: "none",
+                friendlyName: "Default Endpoint",
+                users: {}
             });
         }
     }
     EndpointManager.prototype.getEndpoints = function () {
         return Object.values(this.endpoints);
+    };
+    EndpointManager.prototype.getEndpointsWithStatus = function () {
+        var r = [];
+        for (var _i = 0, _a = Object.keys(this.endpoints); _i < _a.length; _i++) {
+            var key = _a[_i];
+            var end = this.endpoints[key];
+            r.push({
+                endpoint: key,
+                friendlyName: end.options.friendlyName || key,
+                targetsAlive: end.countAliveHosts(),
+                targets: end.options.targets.length,
+                errors: []
+            });
+        }
+        return r;
     };
     EndpointManager.prototype.addEndpoint = function (host, options) {
         var endpoint = new Endpoint(host, this, options);
@@ -41,6 +73,9 @@ var EndpointManager = (function () {
         this.save();
     };
     EndpointManager.prototype.route = function (request, response) {
+        var start = process.hrtime();
+        request.profiler = {};
+        request.profiler.start = process.hrtime();
         var endpoint = this.locateEndpointForRequest(request);
         if (endpoint.options.http) {
             endpoint.route(request, response);
@@ -59,6 +94,8 @@ var EndpointManager = (function () {
         }
     };
     EndpointManager.prototype.routeSecure = function (request, response) {
+        request.profiler = {};
+        request.profiler.start = process.hrtime();
         var endpoint = this.locateEndpointForRequest(request);
         if (endpoint.options.https) {
             endpoint.route(request, response);
@@ -93,9 +130,7 @@ var EndpointManager = (function () {
         fs.writeFileSync(path.normalize(process.env.CONFIG_DIR + "/endpoints.json"), JSON.stringify(e));
     };
     EndpointManager.prototype.locateEndpointForHost = function (host) {
-        if (this.endpoints[host])
-            return this.endpoints[host];
-        return this.endpoints["default"];
+        return this.endpoints[host];
     };
     EndpointManager.prototype.locateEndpointForRequest = function (request) {
         if (this.endpoints[request.headers.host])
@@ -124,6 +159,73 @@ var Endpoint = (function () {
         this.endpointContainer = endpointContainer;
         this.restart();
     }
+    Endpoint.prototype.updateOptions = function (newTree, cb) {
+        var errors = [];
+        for (var _i = 0, _a = Object.keys(newTree); _i < _a.length; _i++) {
+            var key = _a[_i];
+            switch (key) {
+                case "sslCert":
+                    if (newTree[key] != "default" && newTree[key] != "letsEncrypt") {
+                        if (!this.endpointContainer.certStore.hasCertForKey(newTree[key])) {
+                            errors.push("'sslCert' not found");
+                        }
+                    }
+                    break;
+                case "http":
+                    if (typeof newTree[key] != "boolean")
+                        errors.push("'http' invalid setting");
+                    break;
+                case "https":
+                    if (typeof newTree[key] != "boolean")
+                        errors.push("'https' invalid setting");
+                case "allowSelfSigned":
+                    if (typeof newTree[key] != "boolean")
+                        errors.push("'allowSelfSigned' invalid setting");
+                    break;
+                case "authorization":
+                    if (typeof newTree[key] != "string")
+                        errors.push("'authorization' invalid setting");
+                    else {
+                        if (newTree[key] != "none" && newTree[key] != "basic" && newTree[key] != "digest")
+                            errors.push("'authorization' invalid setting");
+                    }
+                    break;
+            }
+        }
+        if (errors.length > 0) {
+            return cb({ success: false, error: errors });
+        }
+        for (var _b = 0, _c = Object.keys(newTree); _b < _c.length; _b++) {
+            var key = _c[_b];
+            switch (key) {
+                case "sslCert":
+                    if (newTree[key] == "letsEncrypt") {
+                        this.endpointContainer.letsEncrypt.register(this.host, "", function (e) {
+                        });
+                    }
+                    else if (newTree[key] == "default") {
+                        this.options.sslCert = "default";
+                        this.endpointContainer.certStore.addCertToDomain(this.host, "default");
+                    }
+                    else {
+                        this.options.sslCert = newTree[key];
+                        this.endpointContainer.certStore.addCertToDomain(this.host, newTree[key]);
+                    }
+                    break;
+                case "http":
+                    this.options.http = newTree[key];
+                    break;
+                case "https":
+                    this.options.https = newTree[key];
+                    break;
+                case "allowSelfSigned":
+                    this.options.allowSelfSigned = newTree[key];
+                    break;
+            }
+        }
+        this.endpointContainer.save();
+        return cb({ success: true, error: [] });
+    };
     Endpoint.prototype.failAuth = function (request, response) {
         response.statusCode = 401;
         if (this.options.authorization == "basic") {
@@ -140,6 +242,9 @@ var Endpoint = (function () {
         }
     };
     Endpoint.prototype.route = function (request, response) {
+        if (!request.profiler)
+            request.profiler = { start: process.hrtime() };
+        request.profiler.host = this.host;
         if (this.options.authorization && this.options.authorization != "none") {
             if (!request.headers["authorization"]) {
                 return this.failAuth(request, response);
@@ -245,6 +350,15 @@ var Endpoint = (function () {
         }
         return false;
     };
+    Endpoint.prototype.countAliveHosts = function () {
+        var alive = 0;
+        for (var _i = 0, _a = this.proxies; _i < _a.length; _i++) {
+            var node = _a[_i];
+            if (node.alive)
+                alive++;
+        }
+        return alive;
+    };
     Endpoint.prototype.restart = function () {
         this.proxies = [];
         for (var _i = 0, _a = this.options.targets; _i < _a.length; _i++) {
@@ -268,11 +382,14 @@ var Endpoint = (function () {
 exports.Endpoint = Endpoint;
 var ProxyNode = (function () {
     function ProxyNode(target, allowSelfSigned, endpoint) {
-        var _this = this;
         this.target = target;
         this.allowSelfSigned = allowSelfSigned;
         this.alive = true;
         this.endpoint = endpoint;
+        this.reloadProxy();
+    }
+    ProxyNode.prototype.reloadProxy = function () {
+        var _this = this;
         this.proxy = httpProxy.createProxyServer({
             target: this.target,
             secure: !this.allowSelfSigned
@@ -280,17 +397,24 @@ var ProxyNode = (function () {
         this.logTarget = this.target.replace("http://", "").replace("https://", "");
         this.proxy.on("proxyRes", function (proxyRes, request, response) {
             endpointLogger.info(_this.endpoint.host + " " + request.connection.remoteAddress + " " + _this.logTarget + " " + (request.username || "-") + " " + new Date().toISOString() + " \"" + (request.method + " " + request.url + " HTTP/" + request.httpVersion) + "\" " + proxyRes.statusCode + " - " + (request.headers.referer ? "\"" + request.headers.referer + "\"" : "-") + " " + (request.headers["user-agent"] ? "\"" + request.headers["user-agent"] + "\"" : "-"));
-        });
-    }
-    ProxyNode.prototype.web = function (request, response) {
-        var _this = this;
-        this.proxy.web(request, response, {}, function (e) {
-            if (e) {
-                console.log(e);
-                _this.alive = false;
-                _this.endpoint.retry(request, response);
+            request.profiler.proxyEnd = process.hrtime(request.profiler.proxyStart);
+            request.profiler.end = process.hrtime(request.profiler.start);
+            request.profiler.responseCode = proxyRes.statusCode;
+            StatsCollector_1.profile(request);
+            if (proxyRes.statusCode == 500) {
+                _this.errors.push("500 error");
             }
         });
+        this.proxy.on("error", function (e, request, response) {
+            console.log(e);
+            _this.alive = false;
+            _this.endpoint.retry(request, response);
+        });
+    };
+    ProxyNode.prototype.web = function (request, response) {
+        request.profiler.target = this.target;
+        request.profiler.proxyStart = process.hrtime();
+        this.proxy.web(request, response);
     };
     ProxyNode.prototype.ws = function (request, socket, head) {
         this.proxy.ws(request, socket, head);

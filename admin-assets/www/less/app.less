@@ -1,0 +1,52 @@
+@successColor1:#5cb85c;
+@successColor2: #41811e;
+@warningColor1: #f0ad4e;
+@errorColor1: #d9534f;
+.endpointHomeView {
+  line-height: 80px;
+  margin-bottom: 15px;
+  margin-top:15px;
+  background-color: lighten(@successColor1, 35%);
+  border: 2px solid darken(@successColor1, 5%);
+  border-radius:5px;
+  .badgeCol {
+    background-color:@successColor1;
+    line-height:40px;
+    >span {
+      line-height:350px;
+      font-size:60px;
+      .fa-shield-alt {
+        color: @successColor2;
+      }
+      .fa-check, .fa-exclamation, .fa-ban {
+        color: #fff;
+      }
+    }
+  }
+}
+
+.endpointHomeView.warning {
+  background-color: lighten(@warningColor1, 35%);
+  border: 2px solid darken(@warningColor1, 5%);
+  .badgeCol {
+    background-color: @warningColor1;
+    >span {
+      .fa-shield-alt {
+        color: darken(@warningColor1, 25%);
+      }
+    }
+  }
+}
+
+.endpointHomeView.error {
+  background-color: lighten(@errorColor1, 35%);
+  border: 2px solid darken(@errorColor1, 5%);
+  .badgeCol {
+    background-color: @errorColor1;
+    >span {
+      .fa-shield-alt {
+        color: darken(@errorColor1, 25%);
+      }
+    }
+  }
+}
