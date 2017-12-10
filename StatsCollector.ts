@@ -8,7 +8,8 @@ export interface IncomingMessage extends IncomingMessage1{
         proxyStart?: [number, number],
         proxyEnd?: [number, number],
         responseCode?: number
-    }
+    },
+    username?:string
 }
 /*
 Type of Stats
@@ -59,6 +60,16 @@ class GranularStorage<StorageType> {
         n.prev = this.current;
         this.current.next = n;
         this.current = n;
+
+        let step = 0;
+        let i = this.current;
+        while(i.prev && step < this.storageLength) {
+            i = i.prev;
+            step++;
+        }
+        if(i.prev) {
+            i.prev = null;
+        }
     }
     public init() {
         this.current.storage = this.onCreate();
@@ -90,7 +101,6 @@ export class Collector {
             for(let f of storage.frames) {
                 f.compute();
             }
-            console.log(storage);
         }
         g.onCreate = ()=>{
             return {

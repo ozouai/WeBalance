@@ -4,7 +4,12 @@ import * as fs from "fs";
 import * as winston from "winston";
 import * as securePin from "secure-pin";
 import * as crypto from "crypto";
+import * as http from "http";
+import * as https from "https";
+import * as url from "url";
+import "./SharedInterfaces";
 const charset = new securePin.CharSet();
+
 import {IncomingMessage, profile} from "./StatsCollector";
 
 charset.addNumeric().addUpperCaseAlpha().addLowerCaseAlpha().randomize();
@@ -54,6 +59,7 @@ export class EndpointManager {
                 users: {}
             });
         }
+        this.endpoints["default"].isDefault = true;
     }
 
     public getEndpoints(): Array<Endpoint> {
@@ -183,6 +189,7 @@ export class Endpoint {
     private proxies: Array<ProxyNode> = [];
     private roundRobinIndex = 0;
     private roundRobinSocketIndex = 0;
+    public isDefault: boolean = false;
     private nonces: {
         [key: string]: {
 
@@ -212,6 +219,9 @@ export class Endpoint {
                     else {
                         if(newTree[key] != "none" && newTree[key] != "basic" && newTree[key] != "digest") errors.push("'authorization' invalid setting");
                     }
+                    break;
+                case "friendlyName":
+                    if(typeof newTree[key] != "string") errors.push("'friendlyName' invalid setting");
                     break;
 
             }
@@ -243,6 +253,9 @@ export class Endpoint {
                     break;
                 case "allowSelfSigned":
                     this.options.allowSelfSigned = newTree[key];
+                    break;
+                case "friendlyName":
+                    this.options.friendlyName = newTree[key];
                     break;
             }
         }
@@ -287,7 +300,7 @@ export class Endpoint {
                     response.end("No Users");
                     return;
                 }
-                let header = request.headers["authorization"];
+                let header: string = (request.headers["authorization"] as string);
                 let method = header.split(" ")[0];
                 console.log(header);
                 if(this.options.authorization == "basic") {
@@ -322,11 +335,12 @@ export class Endpoint {
                 request.headers.authorization = null;
                 request.headers["authorization"] = null;
                 request.rawHeaders.splice(request.rawHeaders.indexOf("Authorization"), 2);
-                console.log(request.rawHeaders);
             }
         }
         if(!this.hasAliveHosts()) {
-            return this.endpointContainer.locateEndpointForHost("default").route(request, response);
+            if(!this.isDefault) return this.endpointContainer.locateEndpointForHost("default").route(request, response);
+            response.statusCode = 500;
+            return response.end("No routes available");
         }
         if(this.options.routingStrategy == "roundRobin") {
             this.roundRobinRoute(request, response);
@@ -401,7 +415,9 @@ export class Endpoint {
     }
 
     public retry(request, response) {
-        this.route(request, response);
+        if(!this.isDefault) return this.route(request, response);
+        response.statusCode = 500;
+        response.end("No routes available");
     }
     public retrySocket(request, socket, head) {
 
@@ -415,14 +431,16 @@ class ProxyNode {
     public alive: boolean;
     public endpoint: Endpoint;
     public allowSelfSigned: boolean;
+    public rescanTime: number = 60;
     private logTarget: string;
     private errors: Array<string>;
+    private rescanTimer: NodeJS.Timer;
     public constructor(target: string, allowSelfSigned: boolean, endpoint: Endpoint) {
         this.target = target;
         this.allowSelfSigned = allowSelfSigned;
-        this.alive = true;
+        this.alive = false;
         this.endpoint = endpoint;
-        this.reloadProxy();
+        this.rescan();
     }
 
     public reloadProxy() {
@@ -444,8 +462,51 @@ class ProxyNode {
         this.proxy.on("error", (e, request, response)=>{
             console.log(e);
             this.alive = false;
+            this.scheduleRescan();
             this.endpoint.retry(request, response);
         })
+    }
+
+    private scheduleRescan() {
+        this.rescanTimer = setInterval(()=>{
+            this.rescan();
+        }, this.rescanTime*1000);
+    }
+
+    private rescan() {
+        let theURL = url.parse(this.target);
+        if(theURL.protocol == "https:") {
+            https.request({
+                method: "head",
+                hostname: theURL.hostname,
+                port: theURL.port || 443,
+                path: "/",
+                rejectUnauthorized: !this.allowSelfSigned,
+            }, (res)=>{
+                this.alive = true;
+                this.reloadProxy();
+            }).on("error", (e)=>{
+                console.log(e);
+                this.alive = false;
+                this.scheduleRescan();
+            }).end();
+        }
+        if(theURL.protocol == "http:") {
+            http.request({
+                method: "head",
+                hostname: theURL.hostname,
+                port: theURL.port || 80,
+                path: "/"
+            }, (res)=>{
+                this.alive = true;
+                this.reloadProxy();
+
+            }).on("error", (e)=>{
+                console.log(e);
+                this.alive = false;
+                this.scheduleRescan();
+            }).end();
+        }
     }
 
     public web(request : IncomingMessage, response) {

@@ -6,6 +6,10 @@ var fs = require("fs");
 var winston = require("winston");
 var securePin = require("secure-pin");
 var crypto = require("crypto");
+var http = require("http");
+var https = require("https");
+var url = require("url");
+require("./SharedInterfaces");
 var charset = new securePin.CharSet();
 var StatsCollector_1 = require("./StatsCollector");
 charset.addNumeric().addUpperCaseAlpha().addLowerCaseAlpha().randomize();
@@ -48,6 +52,7 @@ var EndpointManager = (function () {
                 users: {}
             });
         }
+        this.endpoints["default"].isDefault = true;
     }
     EndpointManager.prototype.getEndpoints = function () {
         return Object.values(this.endpoints);
@@ -154,6 +159,7 @@ var Endpoint = (function () {
         this.proxies = [];
         this.roundRobinIndex = 0;
         this.roundRobinSocketIndex = 0;
+        this.isDefault = false;
         this.host = host;
         this.options = options;
         this.endpointContainer = endpointContainer;
@@ -190,6 +196,10 @@ var Endpoint = (function () {
                             errors.push("'authorization' invalid setting");
                     }
                     break;
+                case "friendlyName":
+                    if (typeof newTree[key] != "string")
+                        errors.push("'friendlyName' invalid setting");
+                    break;
             }
         }
         if (errors.length > 0) {
@@ -220,6 +230,9 @@ var Endpoint = (function () {
                     break;
                 case "allowSelfSigned":
                     this.options.allowSelfSigned = newTree[key];
+                    break;
+                case "friendlyName":
+                    this.options.friendlyName = newTree[key];
                     break;
             }
         }
@@ -298,11 +311,13 @@ var Endpoint = (function () {
                 request.headers.authorization = null;
                 request.headers["authorization"] = null;
                 request.rawHeaders.splice(request.rawHeaders.indexOf("Authorization"), 2);
-                console.log(request.rawHeaders);
             }
         }
         if (!this.hasAliveHosts()) {
-            return this.endpointContainer.locateEndpointForHost("default").route(request, response);
+            if (!this.isDefault)
+                return this.endpointContainer.locateEndpointForHost("default").route(request, response);
+            response.statusCode = 500;
+            return response.end("No routes available");
         }
         if (this.options.routingStrategy == "roundRobin") {
             this.roundRobinRoute(request, response);
@@ -373,7 +388,10 @@ var Endpoint = (function () {
         };
     };
     Endpoint.prototype.retry = function (request, response) {
-        this.route(request, response);
+        if (!this.isDefault)
+            return this.route(request, response);
+        response.statusCode = 500;
+        response.end("No routes available");
     };
     Endpoint.prototype.retrySocket = function (request, socket, head) {
     };
@@ -382,11 +400,12 @@ var Endpoint = (function () {
 exports.Endpoint = Endpoint;
 var ProxyNode = (function () {
     function ProxyNode(target, allowSelfSigned, endpoint) {
+        this.rescanTime = 60;
         this.target = target;
         this.allowSelfSigned = allowSelfSigned;
-        this.alive = true;
+        this.alive = false;
         this.endpoint = endpoint;
-        this.reloadProxy();
+        this.rescan();
     }
     ProxyNode.prototype.reloadProxy = function () {
         var _this = this;
@@ -408,8 +427,50 @@ var ProxyNode = (function () {
         this.proxy.on("error", function (e, request, response) {
             console.log(e);
             _this.alive = false;
+            _this.scheduleRescan();
             _this.endpoint.retry(request, response);
         });
+    };
+    ProxyNode.prototype.scheduleRescan = function () {
+        var _this = this;
+        this.rescanTimer = setInterval(function () {
+            _this.rescan();
+        }, this.rescanTime * 1000);
+    };
+    ProxyNode.prototype.rescan = function () {
+        var _this = this;
+        var theURL = url.parse(this.target);
+        if (theURL.protocol == "https:") {
+            https.request({
+                method: "head",
+                hostname: theURL.hostname,
+                port: theURL.port || 443,
+                path: "/",
+                rejectUnauthorized: !this.allowSelfSigned,
+            }, function (res) {
+                _this.alive = true;
+                _this.reloadProxy();
+            }).on("error", function (e) {
+                console.log(e);
+                _this.alive = false;
+                _this.scheduleRescan();
+            }).end();
+        }
+        if (theURL.protocol == "http:") {
+            http.request({
+                method: "head",
+                hostname: theURL.hostname,
+                port: theURL.port || 80,
+                path: "/"
+            }, function (res) {
+                _this.alive = true;
+                _this.reloadProxy();
+            }).on("error", function (e) {
+                console.log(e);
+                _this.alive = false;
+                _this.scheduleRescan();
+            }).end();
+        }
     };
     ProxyNode.prototype.web = function (request, response) {
         request.profiler.target = this.target;

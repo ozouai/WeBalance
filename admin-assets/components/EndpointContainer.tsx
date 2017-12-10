@@ -69,5 +69,10 @@ export default class EndpointContainer extends React.Component<{}, EndpointConta
         axios.get("/api/endpoints").then((res)=>{
             this.setState({Endpoints: res.data})
         })
+        setInterval(()=>{
+            axios.get("/api/endpoints").then((res)=>{
+                this.setState({Endpoints: res.data})
+            })
+        }, 30*1000);
     }
 }

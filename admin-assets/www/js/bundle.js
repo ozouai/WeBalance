@@ -24734,6 +24734,11 @@ var EndpointContainer = function (_super) {
         axios_1.default.get("/api/endpoints").then(function (res) {
             _this.setState({ Endpoints: res.data });
         });
+        setInterval(function () {
+            axios_1.default.get("/api/endpoints").then(function (res) {
+                _this.setState({ Endpoints: res.data });
+            });
+        }, 30 * 1000);
     };
     return EndpointContainer;
 }(React.Component);
@@ -28864,6 +28869,32 @@ var EndpointView = function (_super) {
                     React.createElement(
                         "h3",
                         null,
+                        "Name"
+                    ),
+                    React.createElement(
+                        "p",
+                        null,
+                        "A friendly name to help identify this endpoint"
+                    )
+                ),
+                React.createElement(
+                    "div",
+                    { className: "col-sm-6" },
+                    React.createElement("input", { type: "text", className: "form-control", onChange: function onChange(e) {
+                            window.changeManager.tree.friendlyName = e.target.value;window.changeManager.recalculate();
+                        }, value: this.state.data.friendlyName })
+                )
+            ),
+            React.createElement("hr", null),
+            React.createElement(
+                "div",
+                { className: "row" },
+                React.createElement(
+                    "div",
+                    { className: "col-sm-6" },
+                    React.createElement(
+                        "h3",
+                        null,
                         "Targets"
                     ),
                     React.createElement(
@@ -29977,11 +30008,32 @@ var SSLChangeCalculator = function (_super) {
     };
     return SSLChangeCalculator;
 }(ChangeCalculator);
+var FriendlyNameChangeCalculator = function (_super) {
+    __extends(FriendlyNameChangeCalculator, _super);
+    function FriendlyNameChangeCalculator() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.key = "friendlyName";
+        return _this;
+    }
+    FriendlyNameChangeCalculator.prototype.calculateHumanChange = function (original, modified) {
+        var _this = this;
+        if (modified == original) return [];
+        return [{ text: "Set Friendly Name to '" + modified + "'", undo: function undo() {
+                _this.changeManager.tree[_this.key] = original;_this.changeManager.recalculate();
+            } }];
+    };
+    FriendlyNameChangeCalculator.prototype.calculateComputerChange = function (original, modified) {
+        if (modified == original) return [];
+        return [{ key: "friendlyName", value: modified, type: "PATCH", endpoint: "default" }];
+    };
+    return FriendlyNameChangeCalculator;
+}(ChangeCalculator);
 ChangeManager.Calculators.push(TargetChangeCalculator);
 ChangeManager.Calculators.push(HTTPChangeCalculator);
 ChangeManager.Calculators.push(HTTPSChangeCalculator);
 ChangeManager.Calculators.push(SelfSignedChangeCalculator);
 ChangeManager.Calculators.push(SSLChangeCalculator);
+ChangeManager.Calculators.push(FriendlyNameChangeCalculator);
 window["ChangeManager"] = ChangeManager;
 window["changeManager"] = new ChangeManager();
 
