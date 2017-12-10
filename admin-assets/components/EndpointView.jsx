@@ -54,6 +54,16 @@ var EndpointView = (function (_super) {
                 </h2>
                 <div className={"row"}>
                     <div className={"col-sm-6"}>
+                        <h3>Name</h3>
+                        <p>A friendly name to help identify this endpoint</p>
+                    </div>
+                    <div className={"col-sm-6"}>
+                        <input type={"text"} className={"form-control"} onChange={function (e) { window.changeManager.tree.friendlyName = e.target.value; window.changeManager.recalculate(); }} value={this.state.data.friendlyName}/>
+                    </div>
+                </div>
+                <hr />
+                <div className={"row"}>
+                    <div className={"col-sm-6"}>
                         <h3>Targets</h3>
                         <p>The URLS to route the request to</p>
                     </div>

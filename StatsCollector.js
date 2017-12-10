@@ -42,6 +42,15 @@ var GranularStorage = (function () {
         n.prev = this.current;
         this.current.next = n;
         this.current = n;
+        var step = 0;
+        var i = this.current;
+        while (i.prev && step < this.storageLength) {
+            i = i.prev;
+            step++;
+        }
+        if (i.prev) {
+            i.prev = null;
+        }
     };
     GranularStorage.prototype.init = function () {
         var _this = this;
@@ -65,7 +74,6 @@ var Collector = (function () {
                 var f = _a[_i];
                 f.compute();
             }
-            console.log(storage);
         };
         g.onCreate = function () {
             return {

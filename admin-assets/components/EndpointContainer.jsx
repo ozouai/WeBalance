@@ -75,6 +75,11 @@ var EndpointContainer = (function (_super) {
         axios_1.default.get("/api/endpoints").then(function (res) {
             _this.setState({ Endpoints: res.data });
         });
+        setInterval(function () {
+            axios_1.default.get("/api/endpoints").then(function (res) {
+                _this.setState({ Endpoints: res.data });
+            });
+        }, 30 * 1000);
     };
     return EndpointContainer;
 }(React.Component));

@@ -19,6 +19,7 @@ export interface EndpointViewState {
                 password:string
             }
         },
+        friendlyName: string,
         enabled: boolean
     },
     certs:Array<{name: string, key: string}>
@@ -71,6 +72,16 @@ export default class EndpointView extends React.Component<EndpointViewProps, End
                     {this.props.match.params.id}
                     </code>
                 </h2>
+                <div className={"row"}>
+                    <div className={"col-sm-6"}>
+                        <h3>Name</h3>
+                        <p>A friendly name to help identify this endpoint</p>
+                    </div>
+                    <div className={"col-sm-6"}>
+                        <input type={"text"} className={"form-control"} onChange={(e)=>{window.changeManager.tree.friendlyName = e.target.value;window.changeManager.recalculate();}} value={this.state.data.friendlyName}/>
+                    </div>
+                </div>
+                <hr/>
                 <div className={"row"}>
                     <div className={"col-sm-6"}>
                         <h3>Targets</h3>

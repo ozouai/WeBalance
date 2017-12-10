@@ -185,13 +185,24 @@ class SSLChangeCalculator extends ChangeCalculator {
         return [{key: "sslCert", value: modified, type:"PATCH", endpoint:"default"}];
     }
 }
+class FriendlyNameChangeCalculator extends ChangeCalculator {
+    key = "friendlyName";
+    calculateHumanChange(original: string, modified: string) {
+        if(modified == original) return [];
+        return [{text: `Set Friendly Name to '${modified}'`, undo:()=>{this.changeManager.tree[this.key] = original;this.changeManager.recalculate();}}]
+    }
+    calculateComputerChange(original: string, modified: string){
+        if(modified == original) return [];
+        return [{key: "friendlyName", value:modified, type:"PATCH", endpoint:"default"}];
+    }
+}
 
 ChangeManager.Calculators.push(TargetChangeCalculator);
 ChangeManager.Calculators.push(HTTPChangeCalculator);
 ChangeManager.Calculators.push(HTTPSChangeCalculator);
 ChangeManager.Calculators.push(SelfSignedChangeCalculator);
 ChangeManager.Calculators.push(SSLChangeCalculator);
-
+ChangeManager.Calculators.push(FriendlyNameChangeCalculator);
 declare global {
     interface Window {ChangeManager: typeof ChangeManager, changeManager: ChangeManager}
 }
