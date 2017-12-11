@@ -5,13 +5,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <base href="/">
-    <link href="www/css/bootstrap.css" rel="stylesheet">
-    <link href="www/css/bootstrap-switch.css" rel="stylesheet">
-    <link href="www/css/fa-svg-with-js.css" rel="stylesheet">
-    <link href="www/css/appc.css" rel="stylesheet">
-    <script src="www/js/jquery.js"></script>
-    <script src="www/js/bootstrap.bundle.js"></script>
-    <script src="www/js/fontawesome-all.min.js"></script>
+    <link href="/www/css/bootstrap.css" rel="stylesheet">
+    <link href="/www/css/bootstrap-switch.css" rel="stylesheet">
+    <link href="/www/css/fa-svg-with-js.css" rel="stylesheet">
+    <link href="/www/css/appc.css" rel="stylesheet">
+    <script src="/www/js/jquery.js"></script>
+    <script src="/www/js/bootstrap.bundle.js"></script>
+    <script src="/www/js/fontawesome-all.min.js"></script>
+    <script src="/www/js/socketio.js"></script>
     <style>
         .modal-backdrop.fade.in {
             opacity: .75;
@@ -25,6 +26,12 @@
             cursor:pointer;
         }
     </style>
+    <script>
+        var socket = io.connect();
+        socket.on("stats", function(data){
+            console.log(data);
+        })
+    </script>
 </head>
 <body>
 <div class="container">
