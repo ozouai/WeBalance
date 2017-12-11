@@ -29799,6 +29799,16 @@ var __extends = undefined && undefined.__extends || function () {
 }();
 Object.defineProperty(exports, "__esModule", { value: true });
 var axios_1 = __webpack_require__(28);
+var _ArrayKey = function () {
+    function _ArrayKey() {}
+    return _ArrayKey;
+}();
+var _NullKey = function () {
+    function _NullKey() {}
+    return _NullKey;
+}();
+var ArrayKey = new _ArrayKey();
+var NullKey = new _NullKey();
 var ChangeManager = function () {
     function ChangeManager() {
         this.certLookup = {};
@@ -29854,14 +29864,44 @@ var ChangeManager = function () {
         for (var _c = 0, results_1 = results; _c < results_1.length; _c++) {
             var r = results_1[_c];
             if (!requests[r.endpoint]) requests[r.endpoint] = {};
-            if (!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = {};
-            requests[r.endpoint][r.type][r.key] = r.value;
+            if (r.key instanceof _ArrayKey) {
+                if (!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = [];
+                requests[r.endpoint][r.type].push(r.value);
+            } else if (typeof r.key == "string") {
+                if (!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = {};
+                requests[r.endpoint][r.type][r.key] = r.value;
+            } else if (r.key instanceof _NullKey) {
+                if (!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = {};
+            }
         }
-        if (requests["default"]) {
-            if (requests["default"]["PATCH"]) {
-                axios_1.default.patch("/api/endpoint/" + this.host, requests["default"]["PATCH"]).then(function (res) {
-                    if (!res.data.success) return cb(null);else return cb(res.data.errors);
-                });
+        for (var _d = 0, _e = Object.keys(requests); _d < _e.length; _d++) {
+            var key = _e[_d];
+            var endpoint = "/api/endpoint/" + this.host;
+            if (key != "default") endpoint += "/" + key;
+            for (var _f = 0, _g = Object.keys(requests[key]); _f < _g.length; _f++) {
+                var method = _g[_f];
+                switch (method) {
+                    case "PATCH":
+                        axios_1.default.patch(endpoint, requests[key][method]).then(function (res) {
+                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        });
+                        break;
+                    case "DELETE":
+                        axios_1.default.delete(endpoint, requests[key][method]).then(function (res) {
+                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        });
+                        break;
+                    case "PUT":
+                        axios_1.default.put(endpoint, requests[key][method]).then(function (res) {
+                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        });
+                        break;
+                    case "POST":
+                        axios_1.default.post(endpoint, requests[key][method]).then(function (res) {
+                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        });
+                        break;
+                }
             }
         }
         console.log(requests);
@@ -29947,7 +29987,20 @@ var TargetChangeCalculator = function (_super) {
         return results;
     };
     TargetChangeCalculator.prototype.calculateComputerChange = function (original, modified) {
-        return [];
+        var results = [];
+        for (var _i = 0, modified_2 = modified; _i < modified_2.length; _i++) {
+            var m_target = modified_2[_i];
+            if (original.indexOf(m_target) == -1) {
+                results.push({ key: ArrayKey, value: m_target, type: "PATCH", endpoint: "targets" });
+            }
+        }
+        for (var _a = 0, original_2 = original; _a < original_2.length; _a++) {
+            var o_target = original_2[_a];
+            if (modified.indexOf(o_target) == -1) {
+                results.push({ key: ArrayKey, value: o_target, type: "POST", endpoint: "targets/delete" });
+            }
+        }
+        return results;
     };
     return TargetChangeCalculator;
 }(ChangeCalculator);

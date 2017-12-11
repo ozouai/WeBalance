@@ -1,4 +1,13 @@
 import axios from 'axios';
+
+class _ArrayKey {
+
+}
+class _NullKey {
+
+}
+const ArrayKey = new _ArrayKey();
+const NullKey = new _NullKey();
 export class ChangeManager {
     public static Calculators: Array<typeof ChangeCalculator> = [];
     private originalTree: {};
@@ -66,15 +75,46 @@ export class ChangeManager {
         } = {};
         for(let r of results) {
             if(!requests[r.endpoint]) requests[r.endpoint] = {};
-            if(!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = {};
-            requests[r.endpoint][r.type][r.key] = r.value;
+            if(r.key instanceof _ArrayKey) {
+                if (!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = [];
+                requests[r.endpoint][r.type].push(r.value);
+            } else if(typeof r.key == "string") {
+                if (!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = {};
+                requests[r.endpoint][r.type][r.key] = r.value;
+            } else if(r.key instanceof _NullKey) {
+                if (!requests[r.endpoint][r.type]) requests[r.endpoint][r.type] = {};
+            }
         }
-        if(requests["default"]) {
-            if(requests["default"]["PATCH"]) {
-                axios.patch(`/api/endpoint/${this.host}`, requests["default"]["PATCH"]).then((res)=>{
-                    if(!res.data.success) return cb(null);
-                    else return cb(res.data.errors);
-                })
+        for(let key of Object.keys(requests)) {
+            let endpoint = `/api/endpoint/${this.host}`;
+            if(key != "default") endpoint+="/"+key;
+            for(let method of Object.keys(requests[key])) {
+                switch(method) {
+                    case "PATCH":
+                        axios.patch(endpoint, requests[key][method]).then((res)=>{
+                            if(!res.data.success) return cb(null);
+                            else return cb(res.data.errors);
+                        });
+                        break;
+                    case "DELETE":
+                        axios.delete(endpoint, requests[key][method]).then((res)=>{
+                            if(!res.data.success) return cb(null);
+                            else return cb(res.data.errors);
+                        });
+                        break;
+                    case "PUT":
+                        axios.put(endpoint, requests[key][method]).then((res)=>{
+                            if(!res.data.success) return cb(null);
+                            else return cb(res.data.errors);
+                        });
+                        break;
+                    case "POST":
+                        axios.post(endpoint, requests[key][method]).then((res)=>{
+                            if(!res.data.success) return cb(null);
+                            else return cb(res.data.errors);
+                        });
+                        break;
+                }
             }
         }
         console.log(requests);
@@ -91,7 +131,7 @@ export interface HumanChangeResult {
 export interface ComputerChangeResult {
     type: "PUT" | "POST" | "DELETE" | "PATCH"| string,
     endpoint: "default" | string;
-    key: string,
+    key: string | _ArrayKey | _NullKey,
     value: any
 }
 
@@ -152,7 +192,18 @@ class TargetChangeCalculator extends ChangeCalculator{
         return results;
     }
     calculateComputerChange(original : Array<string>, modified:Array<string>) {
-        return [];
+        let results = [];
+        for(let m_target of modified) {
+            if(original.indexOf(m_target) == -1) {
+                results.push({key: ArrayKey, value: m_target, type:"PATCH", endpoint:"targets"})
+            }
+        }
+        for(let o_target of original) {
+            if(modified.indexOf(o_target) == -1) {
+                results.push({key: ArrayKey, value: o_target, type:"POST", endpoint:`targets/delete`})
+            }
+        }
+        return results;
     }
 }
 
