@@ -195,6 +195,28 @@ export class Endpoint {
 
         }
     }
+
+    public addTarget(target: string) {
+        if(this.options.targets.indexOf(target) === -1)this.options.targets.push(target);
+        this.endpointContainer.save();
+        this.proxies.push(new ProxyNode(target, this.options.allowSelfSigned, this));
+    }
+    public removeTarget(target: string) {
+        while(this.options.targets.indexOf(target) !== -1) {
+            this.options.targets.splice(this.options.targets.indexOf((target), 1));
+        }
+        this.endpointContainer.save();
+        let proxiesToKill = [];
+        for(let test of this.proxies) {
+            if(test.target == target) {
+                proxiesToKill.push(test);
+            }
+        }
+        for(let kill of proxiesToKill) {
+            this.proxies.splice(this.proxies.indexOf(kill), 1);
+        }
+    }
+
     public updateOptions(newTree: EndpointOptions, cb:(res:{success: boolean, error: Array<string>})=>void)  {
         let errors = [];
         for(let key of Object.keys(newTree)) {
@@ -468,7 +490,7 @@ class ProxyNode {
     }
 
     private scheduleRescan() {
-        this.rescanTimer = setInterval(()=>{
+        this.rescanTimer = setTimeout(()=>{
             this.rescan();
         }, this.rescanTime*1000);
     }
@@ -482,6 +504,8 @@ class ProxyNode {
                 port: theURL.port || 443,
                 path: "/",
                 rejectUnauthorized: !this.allowSelfSigned,
+                agent: false
+
             }, (res)=>{
                 this.alive = true;
                 this.reloadProxy();
@@ -496,7 +520,8 @@ class ProxyNode {
                 method: "head",
                 hostname: theURL.hostname,
                 port: theURL.port || 80,
-                path: "/"
+                path: "/",
+                agent: false
             }, (res)=>{
                 this.alive = true;
                 this.reloadProxy();

@@ -1,5 +1,10 @@
 import * as fs from "fs";
+import heapdump  = require("heapdump");
 
+/*setInterval(()=>{
+    heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");
+}, 60*1000);
+heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");*/
 process.env.CONFIG_DIR = "C:/ouiproxy/";
 
 import * as winston from "winston";

@@ -21,6 +21,12 @@ Type of Stats
 
 
  */
+
+var onSetFinished : (data: StorageBroadcast)=>void;
+export function setFinished(cb:(data:StorageBroadcast)=>void) {
+    onSetFinished = cb;
+}
+
 enum Codes {
     S20X,
     S30X,
@@ -53,6 +59,7 @@ class GranularStorage<StorageType> {
         if(this.onIncrement) {
             this.onIncrement(this.current.storage);
         }
+
         let n = new LinkedStorage<StorageType>();
         if(this.onCreate) {
             n.storage = this.onCreate();
@@ -81,8 +88,11 @@ class GranularStorage<StorageType> {
     public onCreate:()=>StorageType;
 }
 
-
-interface Storage {
+export interface StorageBroadcast {
+    storage: Storage;
+    timeFrame: number;
+}
+export interface Storage {
     map: {
         [key: string]: {
             [key: string]: Frame,
@@ -100,6 +110,9 @@ export class Collector {
         g.onIncrement = (storage)=>{
             for(let f of storage.frames) {
                 f.compute();
+            }
+            if(onSetFinished) {
+                onSetFinished({timeFrame: duration, storage: storage});
             }
         }
         g.onCreate = ()=>{

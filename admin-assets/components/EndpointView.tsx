@@ -93,7 +93,7 @@ export default class EndpointView extends React.Component<EndpointViewProps, End
                                         return (<div className={"input-group"}>
                                             <input type={"text"} className={"form-control"} disabled={true} value={item}/>
                                             <span className={"input-group-btn"}>
-                                                <button className={"btn btn-danger"} type={"button"} onClick={()=>{window.changeManager.tree.targets.splice(window.changeManager.tree.targets.indexOf(item), 1); window.changeManager.recalculate();}}>-</button>
+                                                <button className={"btn btn-danger"} type={"button"} onClick={()=>{window.changeManager.tree.targets.splice(window.changeManager.tree.targets.indexOf(item), 1); window.changeManager.recalculate();}}><i className="fas fa-minus"></i></button>
                                             </span>
                                         </div>);
                                     })
@@ -101,7 +101,7 @@ export default class EndpointView extends React.Component<EndpointViewProps, End
                             <div className={"input-group"}>
                                 <input type={"text"} className={"form-control"} placeholder={"Add Target"} aria-label={"Add Target"} ref={(input)=>{this.targetInput = input;}}/>
                                 <span className={"input-group-btn"}>
-                                    <button className={"btn btn-secondary"} type={"button"} onClick={this.addTarget}>+</button>
+                                    <button className={"btn btn-secondary"} type={"button"} onClick={this.addTarget}><i className="fas fa-plus"></i></button>
                                 </span>
                             </div>
                     </div>

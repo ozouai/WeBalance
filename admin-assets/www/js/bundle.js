@@ -28919,7 +28919,7 @@ var EndpointView = function (_super) {
                                     { className: "btn btn-danger", type: "button", onClick: function onClick() {
                                             window.changeManager.tree.targets.splice(window.changeManager.tree.targets.indexOf(item), 1);window.changeManager.recalculate();
                                         } },
-                                    "-"
+                                    React.createElement("i", { className: "fas fa-minus" })
                                 )
                             )
                         );
@@ -28936,7 +28936,7 @@ var EndpointView = function (_super) {
                             React.createElement(
                                 "button",
                                 { className: "btn btn-secondary", type: "button", onClick: this.addTarget },
-                                "+"
+                                React.createElement("i", { className: "fas fa-plus" })
                             )
                         )
                     )
