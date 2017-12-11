@@ -87,7 +87,7 @@ class UpdateDispatcher {
         this.clients.push(new UpdateClient(socket, this));
     }
 
-    public digestStorageMap(map: Stats.Storage) {
+    public digestStorageMap(map: Stats.StorageBroadcast) {
         for(let c of this.clients) {
             c.sendStats(map);
         }
@@ -102,7 +102,7 @@ class UpdateClient {
         this.socket = socket;
         this.dispatcher = dispatcher;
     }
-    public sendStats(map: Stats.Storage) {
+    public sendStats(map: Stats.StorageBroadcast) {
         this.socket.emit("stats", map);
     }
     public sendLog(s: string) {

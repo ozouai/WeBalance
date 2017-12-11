@@ -360,7 +360,10 @@ export class Endpoint {
             }
         }
         if(!this.hasAliveHosts()) {
-            if(!this.isDefault) return this.endpointContainer.locateEndpointForHost("default").route(request, response);
+            if(!this.isDefault){
+                request.routingError = "noHosts";
+                return this.endpointContainer.locateEndpointForHost("default").route(request, response);
+            }
             response.statusCode = 500;
             return response.end("No routes available");
         }
@@ -537,8 +540,14 @@ class ProxyNode {
     public web(request : IncomingMessage, response) {
         request.profiler.target = this.target;
         request.profiler.proxyStart = process.hrtime();
-
-        this.proxy.web(request, response);
+        let options = {};
+        if(request.routingError == "noHosts") {
+            let host = url.parse(request.url);
+            if(!host.query) host.query = {};
+            host.query["__ouiproxy_error"] = "noHosts";
+            request.url = url.format(host);
+        }
+        this.proxy.web(request, response, options);
     }
     public ws(request, socket, head) {
         this.proxy.ws(request, socket, head);
