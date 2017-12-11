@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
+/*setInterval(()=>{
+    heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");
+}, 60*1000);
+heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");*/
 process.env.CONFIG_DIR = "C:/ouiproxy/";
 var winston = require("winston");
 winston.setLevels({

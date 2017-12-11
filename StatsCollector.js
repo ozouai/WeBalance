@@ -10,6 +10,11 @@ Type of Stats
 
 
  */
+var onSetFinished;
+function setFinished(cb) {
+    onSetFinished = cb;
+}
+exports.setFinished = setFinished;
 var Codes;
 (function (Codes) {
     Codes[Codes["S20X"] = 0] = "S20X";
@@ -73,6 +78,9 @@ var Collector = (function () {
             for (var _i = 0, _a = storage.frames; _i < _a.length; _i++) {
                 var f = _a[_i];
                 f.compute();
+            }
+            if (onSetFinished) {
+                onSetFinished({ timeFrame: duration, storage: storage });
             }
         };
         g.onCreate = function () {

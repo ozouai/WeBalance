@@ -165,6 +165,29 @@ var Endpoint = (function () {
         this.endpointContainer = endpointContainer;
         this.restart();
     }
+    Endpoint.prototype.addTarget = function (target) {
+        if (this.options.targets.indexOf(target) === -1)
+            this.options.targets.push(target);
+        this.endpointContainer.save();
+        this.proxies.push(new ProxyNode(target, this.options.allowSelfSigned, this));
+    };
+    Endpoint.prototype.removeTarget = function (target) {
+        while (this.options.targets.indexOf(target) !== -1) {
+            this.options.targets.splice(this.options.targets.indexOf((target), 1));
+        }
+        this.endpointContainer.save();
+        var proxiesToKill = [];
+        for (var _i = 0, _a = this.proxies; _i < _a.length; _i++) {
+            var test = _a[_i];
+            if (test.target == target) {
+                proxiesToKill.push(test);
+            }
+        }
+        for (var _b = 0, proxiesToKill_1 = proxiesToKill; _b < proxiesToKill_1.length; _b++) {
+            var kill = proxiesToKill_1[_b];
+            this.proxies.splice(this.proxies.indexOf(kill), 1);
+        }
+    };
     Endpoint.prototype.updateOptions = function (newTree, cb) {
         var errors = [];
         for (var _i = 0, _a = Object.keys(newTree); _i < _a.length; _i++) {
@@ -433,7 +456,7 @@ var ProxyNode = (function () {
     };
     ProxyNode.prototype.scheduleRescan = function () {
         var _this = this;
-        this.rescanTimer = setInterval(function () {
+        this.rescanTimer = setTimeout(function () {
             _this.rescan();
         }, this.rescanTime * 1000);
     };
@@ -447,6 +470,7 @@ var ProxyNode = (function () {
                 port: theURL.port || 443,
                 path: "/",
                 rejectUnauthorized: !this.allowSelfSigned,
+                agent: false
             }, function (res) {
                 _this.alive = true;
                 _this.reloadProxy();
@@ -461,7 +485,8 @@ var ProxyNode = (function () {
                 method: "head",
                 hostname: theURL.hostname,
                 port: theURL.port || 80,
-                path: "/"
+                path: "/",
+                agent: false
             }, function (res) {
                 _this.alive = true;
                 _this.reloadProxy();
