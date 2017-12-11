@@ -9,7 +9,8 @@ export interface IncomingMessage extends IncomingMessage1{
         proxyEnd?: [number, number],
         responseCode?: number
     },
-    username?:string
+    username?:string,
+    routingError?: "noHosts"
 }
 /*
 Type of Stats
