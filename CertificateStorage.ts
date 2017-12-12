@@ -137,13 +137,14 @@ export class CertificateStorage {
         }
     }
 
-    public registerKey(name: string, privKey: string, cert: string, chain: string) {
+    public registerKey(name: string, friendlyName: string, privKey: string, cert: string, chain: string) {
         let context = tls.createSecureContext({
             key: privKey,
             cert: cert,
             ca: chain
         });
         this.certStore[name] = {
+            friendlyName: friendlyName,
             key: privKey,
             cert: cert,
             ca: chain

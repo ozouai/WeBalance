@@ -2,6 +2,7 @@
 import * as path from "path";
 import {CertificateStorage} from "./CertificateStorage";
 
+
 export class LetsEncryptAgent {
     private certStore: CertificateStorage;
     constructor(store: CertificateStorage) {
@@ -21,7 +22,7 @@ export class LetsEncryptAgent {
         debug: false
     });
 
-    public register(domain: string, email: string, cb:(err:Error)=>void) {
+    public register(domain: string, email: string, cb:(err:Error, certName: string)=>void) {
         var self = this;
         this.le.register({
             domains: [domain],
@@ -31,11 +32,11 @@ export class LetsEncryptAgent {
             challengeType: "http-01"
         }).then(function(results) {
             console.log(results);
-            self.certStore.registerKey(domain, results.privkey, results.cert, results.chain);
-            cb(null);
+            self.certStore.registerKey("__letsEncrypt-"+domain, "Let's Encrypt - " + domain, results.privkey, results.cert, results.chain);
+            cb(null, "__letsEncrypt-"+domain);
         }, function(err){
             console.log(err);
-            cb(err);
+            cb(err, null);
         })
     }
 }

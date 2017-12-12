@@ -9,6 +9,7 @@ var crypto = require("crypto");
 var http = require("http");
 var https = require("https");
 var url = require("url");
+var AppConfig_1 = require("./AppConfig");
 require("./SharedInterfaces");
 var charset = new securePin.CharSet();
 var StatsCollector_1 = require("./StatsCollector");
@@ -54,6 +55,11 @@ var EndpointManager = (function () {
         }
         this.endpoints["default"].isDefault = true;
     }
+    EndpointManager.prototype.createEndpoint = function (host) {
+        if (!this.endpoints[host]) {
+            this.addEndpoint(host, { targets: [], http: false, https: false, allowSelfSigned: false, enabled: true, routingStrategy: "roundRobin", sslCert: "default", authorization: "none", friendlyName: "Rename", users: {} });
+        }
+    };
     EndpointManager.prototype.getEndpoints = function () {
         return Object.values(this.endpoints);
     };
@@ -189,6 +195,7 @@ var Endpoint = (function () {
         }
     };
     Endpoint.prototype.updateOptions = function (newTree, cb) {
+        var _this = this;
         var errors = [];
         for (var _i = 0, _a = Object.keys(newTree); _i < _a.length; _i++) {
             var key = _a[_i];
@@ -228,12 +235,18 @@ var Endpoint = (function () {
         if (errors.length > 0) {
             return cb({ success: false, error: errors });
         }
+        var awaitLE = false;
         for (var _b = 0, _c = Object.keys(newTree); _b < _c.length; _b++) {
             var key = _c[_b];
             switch (key) {
                 case "sslCert":
                     if (newTree[key] == "letsEncrypt") {
-                        this.endpointContainer.letsEncrypt.register(this.host, "", function (e) {
+                        awaitLE = true;
+                        this.endpointContainer.letsEncrypt.register(this.host, AppConfig_1.config.data.letsEncryptEmail, function (e, certName) {
+                            _this.options.sslCert = certName;
+                            _this.endpointContainer.save();
+                            _this.endpointContainer.certStore.addCertToDomain(_this.host, certName);
+                            return cb({ success: true, error: [] });
                         });
                     }
                     else if (newTree[key] == "default") {
@@ -260,7 +273,8 @@ var Endpoint = (function () {
             }
         }
         this.endpointContainer.save();
-        return cb({ success: true, error: [] });
+        if (!awaitLE)
+            return cb({ success: true, error: [] });
     };
     Endpoint.prototype.failAuth = function (request, response) {
         response.statusCode = 401;

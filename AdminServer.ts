@@ -35,6 +35,10 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
         let endpoint = endpoints.locateEndpointForHost(req.params.id);
         res.json(endpoint.options || {error: "not found"});
     });
+    app.put("/api/endpoint/:id", (req, res)=>{
+        endpoints.createEndpoint(req.params.id);
+        res.json({success: true});
+    })
 
     app.patch("/api/endpoint/:id", (req, res)=>{
         let endpoint = endpoints.locateEndpointForHost(req.params.id);
@@ -72,6 +76,7 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
     app.get("*", (req, res) => {
         res.send(home_ejs({}));
     });
+
 
 
     io.on("connection", function(socket) {

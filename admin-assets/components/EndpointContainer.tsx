@@ -16,6 +16,11 @@ export default class EndpointContainer extends React.Component<{}, EndpointConta
     render() {
         return(
             <DefaultLayout>
+                <div className={"row"}>
+                    <div className={"col-sm-12"}>
+                        <Link to={"/newEndpoint"} className={"btn btn-primary"}>Create New Endpoint</Link>
+                    </div>
+                </div>
             <div role={"tablist"} id={"endpointAccordion"}>
                 {this.state.Endpoints.map((item, index)=>{
                     let warning =item.targetsAlive != item.targets;
