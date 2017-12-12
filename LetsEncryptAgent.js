@@ -28,11 +28,11 @@ var LetsEncryptAgent = (function () {
             challengeType: "http-01"
         }).then(function (results) {
             console.log(results);
-            self.certStore.registerKey(domain, results.privkey, results.cert, results.chain);
-            cb(null);
+            self.certStore.registerKey("__letsEncrypt-" + domain, "Let's Encrypt - " + domain, results.privkey, results.cert, results.chain);
+            cb(null, "__letsEncrypt-" + domain);
         }, function (err) {
             console.log(err);
-            cb(err);
+            cb(err, null);
         });
     };
     return LetsEncryptAgent;

@@ -25,6 +25,11 @@ var EndpointContainer = (function (_super) {
     }
     EndpointContainer.prototype.render = function () {
         return (<DefaultLayout_1.default>
+                <div className={"row"}>
+                    <div className={"col-sm-12"}>
+                        <react_router_dom_1.Link to={"/newEndpoint"} className={"btn btn-primary"}>Create New Endpoint</react_router_dom_1.Link>
+                    </div>
+                </div>
             <div role={"tablist"} id={"endpointAccordion"}>
                 {this.state.Endpoints.map(function (item, index) {
             var warning = item.targetsAlive != item.targets;

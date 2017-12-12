@@ -28,6 +28,10 @@ function bind(endpoints, certificates) {
         var endpoint = endpoints.locateEndpointForHost(req.params.id);
         res.json(endpoint.options || { error: "not found" });
     });
+    app.put("/api/endpoint/:id", function (req, res) {
+        endpoints.createEndpoint(req.params.id);
+        res.json({ success: true });
+    });
     app.patch("/api/endpoint/:id", function (req, res) {
         var endpoint = endpoints.locateEndpointForHost(req.params.id);
         endpoint.updateOptions(req.body, function (result) {

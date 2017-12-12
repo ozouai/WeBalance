@@ -4,6 +4,7 @@ import { BrowserRouter, Route } from 'react-router-dom'
 
 import EndpointPage from './EndpointContainer';
 import EndpointView from "./EndpointView";
+import NewEndpointWithRouter from "./NewEndpoint";
 import Header from "./Header";
 export default class AppRoutes extends React.Component {
     render() {
@@ -11,8 +12,10 @@ export default class AppRoutes extends React.Component {
             <div>
             <BrowserRouter>
                 <Switch>
+                    <Route path={"/newEndpoint"} component={NewEndpointWithRouter} />
                     <Route path={"/endpoint/:id"} component={EndpointView} />
                     <Route path={"/"} component={EndpointPage}/>
+
                 </Switch>
             </BrowserRouter>
             </div>

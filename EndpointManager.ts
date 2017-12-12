@@ -7,6 +7,7 @@ import * as crypto from "crypto";
 import * as http from "http";
 import * as https from "https";
 import * as url from "url";
+import {config} from "./AppConfig";
 import "./SharedInterfaces";
 const charset = new securePin.CharSet();
 
@@ -27,6 +28,13 @@ export class EndpointManager {
     } = {};
     public certStore : CertificateStorage;
     public letsEncrypt: LetsEncryptAgent;
+
+    public createEndpoint(host: string) {
+        if(!this.endpoints[host]) {
+            this.addEndpoint(host, {targets: [], http: false, https: false, allowSelfSigned: false, enabled: true, routingStrategy:"roundRobin", sslCert:"default", authorization:"none", friendlyName:"Rename", users: {}});
+        }
+    }
+
     constructor(certStore: CertificateStorage, letsEncrypt : LetsEncryptAgent) {
         this.certStore = certStore;
         this.letsEncrypt = letsEncrypt;
@@ -251,12 +259,17 @@ export class Endpoint {
         if(errors.length > 0) {
             return cb({success: false, error: errors});
         }
+        let awaitLE = false;
         for(let key of Object.keys(newTree)) {
             switch(key){
                 case "sslCert":
                     if(newTree[key] == "letsEncrypt") {
-                        this.endpointContainer.letsEncrypt.register(this.host, "", (e)=>{
-
+                        awaitLE = true;
+                        this.endpointContainer.letsEncrypt.register(this.host, config.data.letsEncryptEmail, (e, certName)=>{
+                            this.options.sslCert = certName;
+                            this.endpointContainer.save();
+                            this.endpointContainer.certStore.addCertToDomain(this.host, certName);
+                            return cb({success: true, error:[]});
                         })
                     } else if(newTree[key] == "default") {
                         this.options.sslCert = "default";
@@ -282,7 +295,7 @@ export class Endpoint {
             }
         }
         this.endpointContainer.save();
-        return cb({success: true, error:[]});
+        if(!awaitLE) return cb({success: true, error:[]});
     }
 
 

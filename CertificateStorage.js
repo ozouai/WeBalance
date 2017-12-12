@@ -129,13 +129,14 @@ var CertificateStorage = (function () {
         }
         return results;
     };
-    CertificateStorage.prototype.registerKey = function (name, privKey, cert, chain) {
+    CertificateStorage.prototype.registerKey = function (name, friendlyName, privKey, cert, chain) {
         var context = tls.createSecureContext({
             key: privKey,
             cert: cert,
             ca: chain
         });
         this.certStore[name] = {
+            friendlyName: friendlyName,
             key: privKey,
             cert: cert,
             ca: chain
