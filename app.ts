@@ -1,4 +1,6 @@
+import "./ASARInjector";
 import * as fs from "fs";
+
 import heapdump  = require("heapdump");
 
 /*setInterval(()=>{
