@@ -21,6 +21,7 @@
     "@types/serve-static": "^1.13.1",
     "@types/socket.io": "^1.4.31",
     "@types/winston": "^2.3.7",
+    "asar": "^0.14.0",
     "axios": "^0.17.1",
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.0",
@@ -44,6 +45,7 @@
     "redux": "^3.7.2",
     "secure-pin": "^1.0.13",
     "serve-static": "^1.13.1",
+    "socket.io": "^2.0.4",
     "superagent": "^3.8.1",
     "winston": "^2.4.0"
   },
