@@ -108,3 +108,7 @@ typings/
 .env
 
 babel_cache/
+
+temp/
+build/
+bin/

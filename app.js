@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-require("./ASARInjector");
 var fs = require("fs");
 /*setInterval(()=>{
     heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");
