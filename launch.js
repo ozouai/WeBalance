@@ -15,9 +15,10 @@ if (!fs.existsSync("appLock.json")) {
 var lock = JSON.parse(fs.readFileSync("appLock.json", "UTF-8"));
 if (lock.nodemodulesVersion != packageJ.version) {
     console.log("[" + new Date() + "] Updating NPM Modules");
-    ps.execSync("npm update");
+    ps.execSync("npm install --only=production");
     lock.nodemodulesVersion = packageJ.version;
     fs.writeFileSync("appLock.json", JSON.stringify(lock));
+    console.log("[" + new Date() + "] NPM Modules Updated");
 }
 if (fs.existsSync("build")) {
     ASARInjector_1.loadASAR("build/main.asar");
