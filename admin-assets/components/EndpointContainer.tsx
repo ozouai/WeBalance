@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Endpoint from "./Endpoint";
-import {Link} from "react-router-dom";
+import {Link, Redirect} from "react-router-dom";
 import axios from 'axios';
 import DefaultLayout from "./DefaultLayout";
 export interface EndpointContainerState {
@@ -14,6 +14,7 @@ export default class EndpointContainer extends React.Component<{}, EndpointConta
         }
     }
     render() {
+        if(!window.token.hasToken()) return (<Redirect to={"/signin"}/>);
         return(
             <DefaultLayout>
                 <div className={"row"}>
@@ -71,12 +72,16 @@ export default class EndpointContainer extends React.Component<{}, EndpointConta
         )
     }
     componentDidMount() {
-        axios.get("/api/endpoints").then((res)=>{
-            this.setState({Endpoints: res.data})
+        axios.get("/api/endpoints", {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+            if(!res.data.error) {
+                this.setState({Endpoints: res.data})
+            }
         })
         setInterval(()=>{
-            axios.get("/api/endpoints").then((res)=>{
-                this.setState({Endpoints: res.data})
+            axios.get("/api/endpoints", {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+                if(!res.data.error) {
+                    this.setState({Endpoints: res.data})
+                }
             })
         }, 30*1000);
     }

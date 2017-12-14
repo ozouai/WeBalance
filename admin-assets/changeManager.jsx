@@ -321,5 +321,26 @@ ChangeManager.Calculators.push(HTTPSChangeCalculator);
 ChangeManager.Calculators.push(SelfSignedChangeCalculator);
 ChangeManager.Calculators.push(SSLChangeCalculator);
 ChangeManager.Calculators.push(FriendlyNameChangeCalculator);
+var Token = (function () {
+    function Token(name) {
+        this.tokenName = name;
+        this.token = localStorage.getItem("token_" + this.tokenName);
+    }
+    Token.prototype.toString = function () {
+        return this.token;
+    };
+    Token.prototype.setToken = function (token) {
+        this.token = token;
+        localStorage.setItem("token_" + this.tokenName, this.token);
+    };
+    Token.prototype.hasToken = function () {
+        if (!this.token)
+            return false;
+        return this.token.length > 0;
+    };
+    return Token;
+}());
+window.token = new Token("main");
+window.Token = Token;
 window["ChangeManager"] = ChangeManager;
 window["changeManager"] = new ChangeManager();

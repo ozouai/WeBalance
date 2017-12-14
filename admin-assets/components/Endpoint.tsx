@@ -1,11 +1,13 @@
 import * as React from 'react';
-
+import {Redirect} from "react-router-dom";
 export interface EndpointData {
     Host: string,
     Target: string
 }
 export default class Endpoint extends React.Component<EndpointData, {}> {
+
     render() {
+        if(!window.token.hasToken()) return (<Redirect to={"/signin"}/>);
         return(
             <div className="card" id={`endpoint-${this.props.Host.replace(/\./g, "_")}`}>
                 <div className="card-header" role={"tab"} id={`endpoint-${this.props.Host.replace(/\./g, "_")}-header`}>

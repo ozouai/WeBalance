@@ -11,12 +11,15 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
+var react_router_dom_1 = require("react-router-dom");
 var Endpoint = (function (_super) {
     __extends(Endpoint, _super);
     function Endpoint() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     Endpoint.prototype.render = function () {
+        if (!window.token.hasToken())
+            return (<react_router_dom_1.Redirect to={"/signin"}/>);
         return (<div className="card" id={"endpoint-" + this.props.Host.replace(/\./g, "_")}>
                 <div className="card-header" role={"tab"} id={"endpoint-" + this.props.Host.replace(/\./g, "_") + "-header"}>
                     <h5 className={"mb-0"}>

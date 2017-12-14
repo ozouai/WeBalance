@@ -24,6 +24,8 @@ var EndpointContainer = (function (_super) {
         return _this;
     }
     EndpointContainer.prototype.render = function () {
+        if (!window.token.hasToken())
+            return (<react_router_dom_1.Redirect to={"/signin"}/>);
         return (<DefaultLayout_1.default>
                 <div className={"row"}>
                     <div className={"col-sm-12"}>
@@ -77,12 +79,16 @@ var EndpointContainer = (function (_super) {
     };
     EndpointContainer.prototype.componentDidMount = function () {
         var _this = this;
-        axios_1.default.get("/api/endpoints").then(function (res) {
-            _this.setState({ Endpoints: res.data });
+        axios_1.default.get("/api/endpoints", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+            if (!res.data.error) {
+                _this.setState({ Endpoints: res.data });
+            }
         });
         setInterval(function () {
-            axios_1.default.get("/api/endpoints").then(function (res) {
-                _this.setState({ Endpoints: res.data });
+            axios_1.default.get("/api/endpoints", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                if (!res.data.error) {
+                    _this.setState({ Endpoints: res.data });
+                }
             });
         }, 30 * 1000);
     };

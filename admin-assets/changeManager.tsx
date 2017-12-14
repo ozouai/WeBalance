@@ -254,9 +254,33 @@ ChangeManager.Calculators.push(HTTPSChangeCalculator);
 ChangeManager.Calculators.push(SelfSignedChangeCalculator);
 ChangeManager.Calculators.push(SSLChangeCalculator);
 ChangeManager.Calculators.push(FriendlyNameChangeCalculator);
-declare global {
-    interface Window {ChangeManager: typeof ChangeManager, changeManager: ChangeManager}
+
+class Token {
+    private token: string;
+    private tokenName: string;
+    constructor(name: string) {
+        this.tokenName = name;
+        this.token = localStorage.getItem("token_"+this.tokenName);
+    }
+    public toString() {
+        return this.token;
+    }
+
+    public setToken(token: string) {
+        this.token = token;
+        localStorage.setItem("token_"+this.tokenName, this.token);
+    }
+
+    public hasToken(): boolean {
+        if(!this.token) return false;
+        return this.token.length > 0;
+    }
 }
 
+declare global {
+    interface Window {ChangeManager: typeof ChangeManager, changeManager: ChangeManager, token:Token, Token: typeof Token}
+}
+window.token = new Token("main");
+window.Token = Token;
 window["ChangeManager"] = ChangeManager;
 window["changeManager"] = new ChangeManager();

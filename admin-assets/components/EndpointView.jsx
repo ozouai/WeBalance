@@ -14,6 +14,7 @@ var React = require("react");
 var axios_1 = require("axios");
 var DefaultLayout_1 = require("./DefaultLayout");
 var react_bootstrap_switch_1 = require("react-bootstrap-switch");
+var react_router_dom_1 = require("react-router-dom");
 var EndpointView = (function (_super) {
     __extends(EndpointView, _super);
     function EndpointView(props) {
@@ -35,6 +36,8 @@ var EndpointView = (function (_super) {
         }
     };
     EndpointView.prototype.render = function () {
+        if (!window.token.hasToken())
+            return (<react_router_dom_1.Redirect to={"/signin"}/>);
         return (<DefaultLayout_1.default>
                 {this.renderInternal()}
             </DefaultLayout_1.default>);
@@ -181,16 +184,20 @@ var EndpointView = (function (_super) {
     };
     EndpointView.prototype.reloadData = function () {
         var _this = this;
-        axios_1.default.get("/api/endpoint/" + this.props.match.params.id).then(function (res) {
-            _this.setState({ loaded: true, data: res.data });
-            window.changeManager.setTree(_this.props.match.params.id, res.data);
-            window.changeManager.recalculate();
+        axios_1.default.get("/api/endpoint/" + this.props.match.params.id, { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+            if (!res.data.error) {
+                _this.setState({ loaded: true, data: res.data });
+                window.changeManager.setTree(_this.props.match.params.id, res.data);
+                window.changeManager.recalculate();
+            }
         });
-        axios_1.default.get("/api/certs").then(function (res) {
-            _this.setState({ certs: res.data });
-            for (var _i = 0, _a = res.data; _i < _a.length; _i++) {
-                var c = _a[_i];
-                window.changeManager.certLookup[c.key] = c.name;
+        axios_1.default.get("/api/certs", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+            if (!res.data.error) {
+                _this.setState({ certs: res.data });
+                for (var _i = 0, _a = res.data; _i < _a.length; _i++) {
+                    var c = _a[_i];
+                    window.changeManager.certLookup[c.key] = c.name;
+                }
             }
         });
     };

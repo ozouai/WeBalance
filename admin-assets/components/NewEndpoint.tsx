@@ -2,7 +2,7 @@ import * as React from 'react';
 import PropTypes from 'prop-types'
 import axios from 'axios';
 import DefaultLayout from "./DefaultLayout";
-import { withRouter } from 'react-router-dom'
+import { withRouter, Redirect } from 'react-router-dom'
 export default class NewEndpoint extends React.Component<{match: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired}, {}> {
@@ -12,7 +12,7 @@ export default class NewEndpoint extends React.Component<{match: PropTypes.objec
     }
     fqdnInput: any;
     render() {
-
+        if(!window.token.hasToken()) return (<Redirect to={"/signin"}/>);
         const { match, location, history } = this.props
         return (
             <DefaultLayout>
