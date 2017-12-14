@@ -38,7 +38,7 @@
     "@types/node-forge": "^0.6.11",
     "@types/npm": "^2.0.29",
     "@types/pem": "^1.9.3",
-    "@types/react": "^16.0.29",
+    "@types/react": "^16.0.30",
     "@types/serve-static": "^1.13.1",
     "@types/socket.io": "^1.4.31",
     "@types/winston": "^2.3.7",
