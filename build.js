@@ -4,6 +4,7 @@ var fs = require("fs");
 var fse = require("fs-extra");
 var rimraf = require("rimraf");
 var asar = require("asar");
+var ps = require("child_process");
 var arg = process.argv[2];
 var packageJ = JSON.parse(fs.readFileSync("package.json", "UTF-8"));
 if (arg == "build") {
@@ -71,4 +72,7 @@ if (arg == "packageDeb") {
     fse.copySync("buildAssets/debian", "temp/debian");
     fse.copySync("build/", "temp/debian/home/webalance/app/");
     fs.writeFileSync("temp/debian/DEBIAN/control", fs.readFileSync("temp/debian/DEBIAN/control", "UTF-8").replace("%VERSION%", packageJ.version));
+    ps.execSync("wget https://nodejs.org/dist/v8.9.3/node-v8.9.3-linux-x64.tar.xz -o temp/nodex64.tar.xz");
+    ps.execSync("cd temp/debian/home/webalance; tar -xvf ../../../nodex64.tar.xz");
+    ps.execSync("cd temp/debian/home/webalance; mv node-v8.9.3-linux-x64 node");
 }
