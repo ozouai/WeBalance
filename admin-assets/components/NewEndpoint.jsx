@@ -53,8 +53,13 @@ var NewEndpoint = (function (_super) {
         var _this = this;
         var host = this.fqdnInput.value;
         if (host.length > 0) {
-            axios_1.default.put("/api/endpoint/" + host).then(function (res) {
-                _this.props.history.push("/endpoint/" + host);
+            axios_1.default.put("/api/endpoint/" + host, {}, { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                if (!res.data.error) {
+                    _this.props.history.push("/endpoint/" + host);
+                }
+                else {
+                    window.token.invalidate();
+                }
             });
         }
     };

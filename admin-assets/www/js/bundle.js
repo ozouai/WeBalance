@@ -24752,12 +24752,16 @@ var EndpointContainer = function (_super) {
         axios_1.default.get("/api/endpoints", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
             if (!res.data.error) {
                 _this.setState({ Endpoints: res.data });
+            } else {
+                window.token.invalidate();
             }
         });
         setInterval(function () {
             axios_1.default.get("/api/endpoints", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
                 if (!res.data.error) {
                     _this.setState({ Endpoints: res.data });
+                } else {
+                    window.token.invalidate();
                 }
             });
         }, 30 * 1000);
@@ -25906,71 +25910,7 @@ var Header = function (_super) {
             React.createElement(
                 "div",
                 { className: "collapse navbar-collapse", id: "navbarSupportedContent" },
-                React.createElement(
-                    "ul",
-                    { className: "navbar-nav mr-auto" },
-                    React.createElement(
-                        "li",
-                        { className: "nav-item active" },
-                        React.createElement(
-                            "a",
-                            { className: "nav-link", href: "#" },
-                            "Endpoints ",
-                            React.createElement(
-                                "span",
-                                { className: "sr-only" },
-                                "(current)"
-                            )
-                        )
-                    ),
-                    React.createElement(
-                        "li",
-                        { className: "nav-item" },
-                        React.createElement(
-                            "a",
-                            { className: "nav-link", href: "#" },
-                            "Link"
-                        )
-                    ),
-                    React.createElement(
-                        "li",
-                        { className: "nav-item dropdown" },
-                        React.createElement(
-                            "a",
-                            { className: "nav-link dropdown-toggle", href: "#", id: "navbarDropdown", role: "button", "data-toggle": "dropdown", "aria-haspopup": "true", "aria-expanded": "false" },
-                            "Dropdown"
-                        ),
-                        React.createElement(
-                            "div",
-                            { className: "dropdown-menu", "aria-labelledby": "navbarDropdown" },
-                            React.createElement(
-                                "a",
-                                { className: "dropdown-item", href: "#" },
-                                "Action"
-                            ),
-                            React.createElement(
-                                "a",
-                                { className: "dropdown-item", href: "#" },
-                                "Another action"
-                            ),
-                            React.createElement("div", { className: "dropdown-divider" }),
-                            React.createElement(
-                                "a",
-                                { className: "dropdown-item", href: "#" },
-                                "Something else here"
-                            )
-                        )
-                    ),
-                    React.createElement(
-                        "li",
-                        { className: "nav-item" },
-                        React.createElement(
-                            "a",
-                            { className: "nav-link disabled", href: "#" },
-                            "Disabled"
-                        )
-                    )
-                ),
+                React.createElement("ul", { className: "navbar-nav mr-auto" }),
                 React.createElement(
                     "div",
                     { className: "form-inline my-2 my-lg-0" },
@@ -29206,6 +29146,8 @@ var EndpointView = function (_super) {
                 _this.setState({ loaded: true, data: res.data });
                 window.changeManager.setTree(_this.props.match.params.id, res.data);
                 window.changeManager.recalculate();
+            } else {
+                window.token.invalidate();
             }
         });
         axios_1.default.get("/api/certs", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
@@ -29215,6 +29157,8 @@ var EndpointView = function (_super) {
                     var c = _a[_i];
                     window.changeManager.certLookup[c.key] = c.name;
                 }
+            } else {
+                window.token.invalidate();
             }
         });
     };
@@ -29927,8 +29871,12 @@ var NewEndpoint = function (_super) {
         var _this = this;
         var host = this.fqdnInput.value;
         if (host.length > 0) {
-            axios_1.default.put("/api/endpoint/" + host).then(function (res) {
-                _this.props.history.push("/endpoint/" + host);
+            axios_1.default.put("/api/endpoint/" + host, {}, { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                if (!res.data.error) {
+                    _this.props.history.push("/endpoint/" + host);
+                } else {
+                    window.token.invalidate();
+                }
             });
         }
     };
@@ -30161,23 +30109,39 @@ var ChangeManager = function () {
                 var method = _g[_f];
                 switch (method) {
                     case "PATCH":
-                        axios_1.default.patch(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        axios_1.default.patch(endpoint, requests[key][method], { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "DELETE":
-                        axios_1.default.delete(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        axios_1.default.delete(endpoint, { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "PUT":
-                        axios_1.default.put(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        axios_1.default.put(endpoint, requests[key][method], { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "POST":
-                        axios_1.default.post(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                        axios_1.default.post(endpoint, requests[key][method], { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success) return cb(null);else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                 }
@@ -30377,6 +30341,10 @@ var Token = function () {
     Token.prototype.setToken = function (token) {
         this.token = token;
         localStorage.setItem("token_" + this.tokenName, this.token);
+    };
+    Token.prototype.invalidate = function () {
+        this.token = "";
+        window.location.href = "/signin";
     };
     Token.prototype.hasToken = function () {
         if (!this.token) return false;

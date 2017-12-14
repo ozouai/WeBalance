@@ -1,11 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
+var path = require("path");
 /*setInterval(()=>{
     heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");
 }, 60*1000);
 heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");*/
-process.env.CONFIG_DIR = "C:/ouiproxy/";
+if (!process.env.CONFIG_DIR)
+    process.env.CONFIG_DIR = "./config";
+if (!fs.existsSync(path.normalize(process.env.CONFIG_DIR))) {
+    require("mkdirp")(path.normalize(process.env.CONFIG_DIR));
+}
 var winston = require("winston");
 winston.setLevels({
     error: 0,
@@ -40,7 +45,6 @@ var CertificateStorage_1 = require("./CertificateStorage");
 var httpProxy = require("http-proxy");
 var http = require("http");
 var https = require("https");
-var path = require("path");
 var EndpointManager_1 = require("./EndpointManager");
 require("./ProxyAssetServer");
 var AdminServer = require("./AdminServer");

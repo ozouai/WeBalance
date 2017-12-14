@@ -42,8 +42,12 @@ export default class NewEndpoint extends React.Component<{match: PropTypes.objec
     createEndpoint() {
         let host = this.fqdnInput.value;
         if(host.length > 0) {
-            axios.put(`/api/endpoint/${host}`).then((res)=>{
-                this.props.history.push(`/endpoint/${host}`);
+            axios.put(`/api/endpoint/${host}`, {}, {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+                if(!res.data.error) {
+                    this.props.history.push(`/endpoint/${host}`);
+                } else {
+                    window.token.invalidate();
+                }
             })
         }
     }

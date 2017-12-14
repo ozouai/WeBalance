@@ -210,6 +210,8 @@ export default class EndpointView extends React.Component<EndpointViewProps, End
                 this.setState({loaded: true, data: res.data});
                 (window as any).changeManager.setTree(this.props.match.params.id, res.data);
                 window.changeManager.recalculate();
+            }else {
+                window.token.invalidate();
             }
         })
         axios.get("/api/certs", {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
@@ -218,6 +220,8 @@ export default class EndpointView extends React.Component<EndpointViewProps, End
                 for (let c of res.data) {
                     window.changeManager.certLookup[c.key] = c.name;
                 }
+            }else {
+                window.token.invalidate();
             }
         });
     }
