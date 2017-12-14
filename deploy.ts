@@ -1,6 +1,11 @@
 import * as request from "request";
 import * as fs from "fs";
 
+if(process.env.TRAVIS_BRANCH != "master") {
+    console.log("Only run on master");
+    process.exit(0);
+}
+
 const uploadFiles = {
     "build/proxy.zip": {
         name: "proxy.zip",
