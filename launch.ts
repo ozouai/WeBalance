@@ -1,4 +1,4 @@
-import {loadASAR} from "./ASARInjector";
+
 import * as fs from "fs";
 import * as ps from "child_process";
 const packageJ = JSON.parse(fs.readFileSync("package.json", "UTF-8"));
@@ -20,7 +20,7 @@ if(lock.nodemodulesVersion != packageJ.version) {
     fs.writeFileSync("appLock.json", JSON.stringify(lock));
     console.log("["+new Date()+"] NPM Modules Updated");
 }
-
+import {loadASAR} from "./ASARInjector";
 if(fs.existsSync("build")) {
     loadASAR("build/main.asar");
     loadASAR("build/admin.asar");
