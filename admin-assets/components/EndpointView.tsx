@@ -2,6 +2,7 @@ import * as React from 'react';
 import axios from 'axios';
 import DefaultLayout from "./DefaultLayout";
 import Switch from 'react-bootstrap-switch';
+import {Redirect} from "react-router-dom";
 export interface EndpointViewState {
     host?: string;
     loaded?: boolean;
@@ -51,6 +52,7 @@ export default class EndpointView extends React.Component<EndpointViewProps, End
         }
     }
     render() {
+        if(!window.token.hasToken()) return (<Redirect to={"/signin"}/>);
         return (
             <DefaultLayout>
                 {this.renderInternal()}
@@ -203,15 +205,19 @@ export default class EndpointView extends React.Component<EndpointViewProps, End
         )
     }
     reloadData() {
-        axios.get(`/api/endpoint/${this.props.match.params.id}`).then((res)=>{
-            this.setState({loaded: true, data: res.data});
-            (window as any).changeManager.setTree(this.props.match.params.id, res.data);
-            window.changeManager.recalculate();
+        axios.get(`/api/endpoint/${this.props.match.params.id}`, {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+            if(!res.data.error) {
+                this.setState({loaded: true, data: res.data});
+                (window as any).changeManager.setTree(this.props.match.params.id, res.data);
+                window.changeManager.recalculate();
+            }
         })
-        axios.get("/api/certs").then((res)=>{
-            this.setState({certs: res.data});
-            for(let c of res.data) {
-                window.changeManager.certLookup[c.key] = c.name;
+        axios.get("/api/certs", {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+            if(!res.data.error) {
+                this.setState({certs: res.data});
+                for (let c of res.data) {
+                    window.changeManager.certLookup[c.key] = c.name;
+                }
             }
         });
     }

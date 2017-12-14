@@ -23,6 +23,8 @@ var NewEndpoint = (function (_super) {
     }
     NewEndpoint.prototype.render = function () {
         var _this = this;
+        if (!window.token.hasToken())
+            return (<react_router_dom_1.Redirect to={"/signin"}/>);
         var _a = this.props, match = _a.match, location = _a.location, history = _a.history;
         return (<DefaultLayout_1.default>
                 <h1>New Endpoint</h1>

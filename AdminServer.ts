@@ -1,10 +1,46 @@
 import * as express from "express";
+import * as session from "express-session";
 import * as bodyParser from "body-parser";
 import * as FileController from "./FileController";
 import {EndpointManager} from "./EndpointManager";
 import {CertificateStorage} from "./CertificateStorage";
 import * as socketio from "socket.io";
 import * as Stats from "./StatsCollector";
+import * as safeSave from "./SafeSave";
+import * as bcrypt from "bcrypt";
+import * as fs from "fs";
+import * as path from "path";
+import * as securePin from "secure-pin";
+
+let tokenStore : {
+    [key: string]: {
+        lastUsed: Date,
+        user: string
+    }
+} = {};
+
+if(!fs.existsSync(path.normalize(process.env.CONFIG_DIR+"/adminUsers.json"))) {
+    safeSave.saveSync(path.normalize(process.env.CONFIG_DIR+"/adminUsers.json"), JSON.stringify({root: {password: ""}}));
+}
+
+let users = JSON.parse(fs.readFileSync(path.normalize(process.env.CONFIG_DIR+"/adminUsers.json"), "UTF-8"));
+
+function requireAuth(request: express.Request, response: express.Response, next: express.NextFunction) {
+    let token: string;
+    if(request.params.token)
+        token = request.params.token;
+    else if(request.headers.authorization) {
+        let header : string = request.headers.authorization
+        if(header.indexOf("bearer") !== -1) {
+            let d = header.split(" ");
+            if(d[1]) {
+                if(tokenStore[d[1]])
+                    return next();
+            }
+        }
+    }
+    response.json({error: true});
+}
 
 export function bind(endpoints: EndpointManager, certificates: CertificateStorage) {
     let app = express();
@@ -23,24 +59,57 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
 
     var home_ejs = FileController.compileEJS("admin-assets/ejs/home.ejs");
 
+    app.get("/api/tokenTest", requireAuth, (req, res)=>{
+        res.json({success:true});
+    })
+
+    app.post("/api/signin", (req, res)=>{
+        function fail() {
+            res.json({error: "notfound"});
+        }
+        function auth() {
+            let user = req.body.username;
+            securePin.generateString(25, securePin.defaultCharset, (token)=>{
+                tokenStore[token] = {
+                    user: user,
+                    lastUsed: new Date()
+                }
+                res.json({token: token})
+            })
+
+        }
+        if(!req.body.username)
+            return fail();
+        if(!users[req.body.username])
+            return fail();
+        if(users[req.body.username].password == "*")
+            return auth();
+        bcrypt.compare(req.body.password, users[req.body.username].password, function(err, res){
+            if(!res)
+                return fail();
+            if(res)
+                return auth();
+        })
+    })
+
     app.get("/", (req, res) => {
         res.send(home_ejs({}));
     });
 
-    app.get("/api/endpoints", (req, res)=>{
+    app.get("/api/endpoints", requireAuth, (req, res)=>{
         res.json(endpoints.getEndpointsWithStatus());
     });
 
-    app.get("/api/endpoint/:id", (req, res)=>{
+    app.get("/api/endpoint/:id", requireAuth, (req, res)=>{
         let endpoint = endpoints.locateEndpointForHost(req.params.id);
         res.json(endpoint.options || {error: "not found"});
     });
-    app.put("/api/endpoint/:id", (req, res)=>{
+    app.put("/api/endpoint/:id", requireAuth, (req, res)=>{
         endpoints.createEndpoint(req.params.id);
         res.json({success: true});
     })
 
-    app.patch("/api/endpoint/:id", (req, res)=>{
+    app.patch("/api/endpoint/:id", requireAuth, (req, res)=>{
         let endpoint = endpoints.locateEndpointForHost(req.params.id);
         endpoint.updateOptions(req.body, (result)=>{
             if(!result.success) {
@@ -52,7 +121,7 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
 
     });
 
-    app.post("/api/endpoint/:id/targets/delete", (req, res)=>{
+    app.post("/api/endpoint/:id/targets/delete", requireAuth, (req, res)=>{
         let endpoint = endpoints.locateEndpointForHost(req.params.id);
         for(let d of req.body) {
             endpoint.removeTarget(d);
@@ -60,7 +129,7 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
         res.json({success: true});
     });
 
-    app.patch("/api/endpoint/:id/targets", (req, res)=>{
+    app.patch("/api/endpoint/:id/targets", requireAuth, (req, res)=>{
         let endpoint = endpoints.locateEndpointForHost(req.params.id);
         for(let d of req.body) {
             endpoint.addTarget(d);
@@ -68,7 +137,7 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
         res.json({success: true});
     })
 
-    app.get("/api/certs", (req, res)=>{
+    app.get("/api/certs", requireAuth, (req, res)=>{
         res.json(certificates.getCertList());
     });
 
