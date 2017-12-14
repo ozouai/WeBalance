@@ -1,0 +1,8 @@
+Package: webalance
+Version: %VERSION%
+Section: base
+Priority: optional
+Architecture: all
+Depends: debconf (>= 0.2.26)
+Maintainer: Omar Zouai <omar@omarzouai.com>
+Description: WeBalance, an easy to use in-home load-balancer

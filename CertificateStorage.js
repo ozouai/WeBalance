@@ -105,12 +105,12 @@ var CertificateStorage = (function () {
             this.compiledContexts["default"] = this.defaultContext;
             for (var _i = 0, _a = Object.keys(this.certStore); _i < _a.length; _i++) {
                 var key = _a[_i];
-                var context = tls.createSecureContext({
+                var context_1 = tls.createSecureContext({
                     key: this.certStore[key].key,
                     cert: this.certStore[key].cert,
                     ca: this.certStore[key].ca
                 });
-                this.compiledContexts[key] = context;
+                this.compiledContexts[key] = context_1;
             }
         }
     }
