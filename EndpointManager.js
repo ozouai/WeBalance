@@ -184,9 +184,9 @@ var Endpoint = (function () {
         this.endpointContainer.save();
         var proxiesToKill = [];
         for (var _i = 0, _a = this.proxies; _i < _a.length; _i++) {
-            var test = _a[_i];
-            if (test.target == target) {
-                proxiesToKill.push(test);
+            var test_1 = _a[_i];
+            if (test_1.target == target) {
+                proxiesToKill.push(test_1);
             }
         }
         for (var _b = 0, proxiesToKill_1 = proxiesToKill; _b < proxiesToKill_1.length; _b++) {
