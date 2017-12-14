@@ -112,3 +112,4 @@ babel_cache/
 temp/
 build/
 bin/
+/config/

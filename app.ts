@@ -1,12 +1,16 @@
 import * as fs from "fs";
-
+import * as os from "os";
+import * as path from "path";
 import heapdump  = require("heapdump");
 
 /*setInterval(()=>{
     heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");
 }, 60*1000);
 heapdump.writeSnapshot("heaps/"+Date.now()+".heapsnapshot");*/
-process.env.CONFIG_DIR = "C:/ouiproxy/";
+if(!process.env.CONFIG_DIR) process.env.CONFIG_DIR = "./config";
+if(!fs.existsSync(path.normalize(process.env.CONFIG_DIR))) {
+    require("mkdirp")(path.normalize(process.env.CONFIG_DIR));
+}
 
 import * as winston from "winston";
 winston.setLevels({
@@ -42,7 +46,6 @@ import {CertificateStorage} from "./CertificateStorage";
 import * as httpProxy from "http-proxy";
 import * as http from "http";
 import * as https from "https";
-import * as path from "path";
 import * as serveStatic from "serve-static";
 import {EndpointManager} from "./EndpointManager";
 import "./ProxyAssetServer";

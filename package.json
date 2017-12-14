@@ -19,6 +19,7 @@
     "greenlock": "^2.1.18",
     "http-proxy": "^1.16.2",
     "le-challenge-fs": "git+https://github.com/ozouai/le-challenge-fs.git",
+    "mkdirp": "^0.5.1",
     "node-forge": "^0.7.1",
     "pem": "^1.12.3",
     "secure-pin": "^1.0.14",

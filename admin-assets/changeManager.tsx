@@ -91,27 +91,43 @@ export class ChangeManager {
             for(let method of Object.keys(requests[key])) {
                 switch(method) {
                     case "PATCH":
-                        axios.patch(endpoint, requests[key][method]).then((res)=>{
-                            if(!res.data.success) return cb(null);
-                            else return cb(res.data.errors);
+                        axios.patch(endpoint, requests[key][method],{headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+                            if(!res.data.error) {
+                                if(!res.data.success) return cb(null);
+                                else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "DELETE":
-                        axios.delete(endpoint, requests[key][method]).then((res)=>{
-                            if(!res.data.success) return cb(null);
-                            else return cb(res.data.errors);
+                        axios.delete(endpoint, {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+                            if(!res.data.error) {
+                                if(!res.data.success) return cb(null);
+                                else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "PUT":
-                        axios.put(endpoint, requests[key][method]).then((res)=>{
-                            if(!res.data.success) return cb(null);
-                            else return cb(res.data.errors);
+                        axios.put(endpoint, requests[key][method], {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+                            if(!res.data.error) {
+                                if(!res.data.success) return cb(null);
+                                else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "POST":
-                        axios.post(endpoint, requests[key][method]).then((res)=>{
-                            if(!res.data.success) return cb(null);
-                            else return cb(res.data.errors);
+                        axios.post(endpoint, requests[key][method], {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
+                            if(!res.data.error) {
+                                if (!res.data.success) return cb(null);
+                                else return cb(res.data.errors);
+                            } else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                 }
@@ -271,6 +287,10 @@ class Token {
         localStorage.setItem("token_"+this.tokenName, this.token);
     }
 
+    public invalidate() {
+        this.token = "";
+        window.location.href ="/signin";
+    }
     public hasToken(): boolean {
         if(!this.token) return false;
         return this.token.length > 0;

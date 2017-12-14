@@ -75,12 +75,16 @@ export default class EndpointContainer extends React.Component<{}, EndpointConta
         axios.get("/api/endpoints", {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
             if(!res.data.error) {
                 this.setState({Endpoints: res.data})
+            } else {
+                window.token.invalidate();
             }
         })
         setInterval(()=>{
             axios.get("/api/endpoints", {headers:{"Authorization": "bearer "+ window.token}}).then((res)=>{
                 if(!res.data.error) {
                     this.setState({Endpoints: res.data})
+                }else {
+                    window.token.invalidate();
                 }
             })
         }, 30*1000);

@@ -190,6 +190,9 @@ var EndpointView = (function (_super) {
                 window.changeManager.setTree(_this.props.match.params.id, res.data);
                 window.changeManager.recalculate();
             }
+            else {
+                window.token.invalidate();
+            }
         });
         axios_1.default.get("/api/certs", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
             if (!res.data.error) {
@@ -198,6 +201,9 @@ var EndpointView = (function (_super) {
                     var c = _a[_i];
                     window.changeManager.certLookup[c.key] = c.name;
                 }
+            }
+            else {
+                window.token.invalidate();
             }
         });
     };

@@ -83,11 +83,17 @@ var EndpointContainer = (function (_super) {
             if (!res.data.error) {
                 _this.setState({ Endpoints: res.data });
             }
+            else {
+                window.token.invalidate();
+            }
         });
         setInterval(function () {
             axios_1.default.get("/api/endpoints", { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
                 if (!res.data.error) {
                     _this.setState({ Endpoints: res.data });
+                }
+                else {
+                    window.token.invalidate();
                 }
             });
         }, 30 * 1000);

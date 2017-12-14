@@ -105,35 +105,55 @@ var ChangeManager = (function () {
                 var method = _g[_f];
                 switch (method) {
                     case "PATCH":
-                        axios_1.default.patch(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success)
-                                return cb(null);
-                            else
-                                return cb(res.data.errors);
+                        axios_1.default.patch(endpoint, requests[key][method], { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success)
+                                    return cb(null);
+                                else
+                                    return cb(res.data.errors);
+                            }
+                            else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "DELETE":
-                        axios_1.default.delete(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success)
-                                return cb(null);
-                            else
-                                return cb(res.data.errors);
+                        axios_1.default.delete(endpoint, { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success)
+                                    return cb(null);
+                                else
+                                    return cb(res.data.errors);
+                            }
+                            else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "PUT":
-                        axios_1.default.put(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success)
-                                return cb(null);
-                            else
-                                return cb(res.data.errors);
+                        axios_1.default.put(endpoint, requests[key][method], { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success)
+                                    return cb(null);
+                                else
+                                    return cb(res.data.errors);
+                            }
+                            else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                     case "POST":
-                        axios_1.default.post(endpoint, requests[key][method]).then(function (res) {
-                            if (!res.data.success)
-                                return cb(null);
-                            else
-                                return cb(res.data.errors);
+                        axios_1.default.post(endpoint, requests[key][method], { headers: { "Authorization": "bearer " + window.token } }).then(function (res) {
+                            if (!res.data.error) {
+                                if (!res.data.success)
+                                    return cb(null);
+                                else
+                                    return cb(res.data.errors);
+                            }
+                            else {
+                                window.token.invalidate();
+                            }
                         });
                         break;
                 }
@@ -332,6 +352,10 @@ var Token = (function () {
     Token.prototype.setToken = function (token) {
         this.token = token;
         localStorage.setItem("token_" + this.tokenName, this.token);
+    };
+    Token.prototype.invalidate = function () {
+        this.token = "";
+        window.location.href = "/signin";
     };
     Token.prototype.hasToken = function () {
         if (!this.token)
