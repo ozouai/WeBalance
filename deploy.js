@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var request = require("request");
 var fs = require("fs");
+if (process.env.TRAVIS_BRANCH != "master") {
+    console.log("Only run on master");
+    process.exit(0);
+}
 var uploadFiles = {
     "build/proxy.zip": {
         name: "proxy.zip",

@@ -72,7 +72,7 @@ if (arg == "packageDeb") {
     fse.copySync("buildAssets/debian", "temp/debian");
     fse.copySync("build/", "temp/debian/home/webalance/app/");
     fs.writeFileSync("temp/debian/DEBIAN/control", fs.readFileSync("temp/debian/DEBIAN/control", "UTF-8").replace("%VERSION%", packageJ.version));
-    ps.execSync("wget https://nodejs.org/dist/v8.9.3/node-v8.9.3-linux-x64.tar.xz -O temp/nodex64.tar.xz");
+    ps.execSync("wget -q https://nodejs.org/dist/v8.9.3/node-v8.9.3-linux-x64.tar.xz -O temp/nodex64.tar.xz");
     ps.execSync("cd temp/debian/home/webalance; tar -xvf ../../../nodex64.tar.xz");
     ps.execSync("cd temp/debian/home/webalance; mv node-v8.9.3-linux-x64 node");
     ps.execSync("cd temp/; dpkg-deb --build debian; mv debian.deb ../build/webalance.deb");
