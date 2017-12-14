@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var ASARInjector_1 = require("./ASARInjector");
 var fs = require("fs");
 var ps = require("child_process");
 var packageJ = JSON.parse(fs.readFileSync("package.json", "UTF-8"));
@@ -20,6 +19,7 @@ if (lock.nodemodulesVersion != packageJ.version) {
     fs.writeFileSync("appLock.json", JSON.stringify(lock));
     console.log("[" + new Date() + "] NPM Modules Updated");
 }
+var ASARInjector_1 = require("./ASARInjector");
 if (fs.existsSync("build")) {
     ASARInjector_1.loadASAR("build/main.asar");
     ASARInjector_1.loadASAR("build/admin.asar");
