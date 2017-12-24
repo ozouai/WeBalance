@@ -77,6 +77,9 @@ describe("Certificate Storage Tests", function () {
         store = new certStore.CertificateStorage();
         chai.assert(store !== null, "Error Instantiating");
     });
+    it("Should have a single cert after recreation", function () {
+        chai.assert.equal(store.getCertList().length, 1, "Cert wasn't reloaded");
+    });
     it("Deleting temporary directory", function () {
         rimraf.sync("temp/test");
         chai.assert(true, "Can't Delete");

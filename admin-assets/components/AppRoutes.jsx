@@ -17,6 +17,8 @@ var EndpointContainer_1 = require("./EndpointContainer");
 var EndpointView_1 = require("./EndpointView");
 var NewEndpoint_1 = require("./NewEndpoint");
 var Signin_1 = require("./Signin");
+var PluginAdmin_1 = require("./PluginAdmin");
+var PluginView_1 = require("./PluginView");
 var AppRoutes = (function (_super) {
     __extends(AppRoutes, _super);
     function AppRoutes() {
@@ -28,6 +30,8 @@ var AppRoutes = (function (_super) {
                 <react_router_1.Switch>
                     <react_router_dom_1.Route path={"/newEndpoint"} component={NewEndpoint_1.default}/>
                     <react_router_dom_1.Route path={"/endpoint/:id"} component={EndpointView_1.default}/>
+                    <react_router_dom_1.Route path={"/plugins/:id"} component={PluginView_1.default}/>
+                    <react_router_dom_1.Route path={"/plugins"} component={PluginAdmin_1.default}/>
                     <react_router_dom_1.Route path={"/signin"} component={Signin_1.default}/>
                     <react_router_dom_1.Route path={"/"} component={EndpointContainer_1.default}/>
 

@@ -10,6 +10,7 @@ var bcrypt = require("bcrypt");
 var fs = require("fs");
 var path = require("path");
 var securePin = require("secure-pin");
+var PluginManager_1 = require("./PluginManager");
 var tokenStore = {};
 if (!fs.existsSync(path.normalize(process.env.CONFIG_DIR + "/adminUsers.json"))) {
     safeSave.saveSync(path.normalize(process.env.CONFIG_DIR + "/adminUsers.json"), JSON.stringify({ root: { password: "" } }));
@@ -87,6 +88,22 @@ function bind(endpoints, certificates) {
     app.put("/api/endpoint/:id", requireAuth, function (req, res) {
         endpoints.createEndpoint(req.params.id);
         res.json({ success: true });
+    });
+    app.get("/api/plugins", function (req, res) {
+        res.json(PluginManager_1.getPluginAdminList());
+    });
+    app.get("/api/plugins/:id/webInterface", function (req, res) {
+        var wi = PluginManager_1.getPluginByName(req.params.id).webInterface;
+        res.json({ name: wi.name, blocks: wi.blocks, values: wi.getValues() });
+    });
+    app.put("/api/plugins/:id/settings", function (req, res) {
+        var p = PluginManager_1.getPluginByName(req.params.id);
+        p.webInterface.setValues(req.body);
+        res.json({ success: true });
+    });
+    app.get("/api/plugins/blocks", function (req, res) {
+        var blocks = PluginManager_1.getAdminBlocks();
+        res.json(blocks);
     });
     app.patch("/api/endpoint/:id", requireAuth, function (req, res) {
         var endpoint = endpoints.locateEndpointForHost(req.params.id);

@@ -12,6 +12,9 @@ if (!fs.existsSync("appLock.json")) {
     fs.writeFileSync("appLock.json", JSON.stringify(d));
 }
 var lock = JSON.parse(fs.readFileSync("appLock.json", "UTF-8"));
+if (fs.existsSync("update")) {
+    console.log("[" + new Date() + "] Update Detected");
+}
 if (lock.nodemodulesVersion != packageJ.version) {
     console.log("[" + new Date() + "] Updating NPM Modules");
     ps.execSync("npm install --only=production");

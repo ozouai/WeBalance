@@ -11,7 +11,7 @@ import * as bcrypt from "bcrypt";
 import * as fs from "fs";
 import * as path from "path";
 import * as securePin from "secure-pin";
-
+import {getAdminBlocks, getPluginList, getPluginAdminList, getPluginByName} from "./PluginManager"
 let tokenStore : {
     [key: string]: {
         lastUsed: Date,
@@ -107,6 +107,26 @@ export function bind(endpoints: EndpointManager, certificates: CertificateStorag
     app.put("/api/endpoint/:id", requireAuth, (req, res)=>{
         endpoints.createEndpoint(req.params.id);
         res.json({success: true});
+    });
+
+    app.get("/api/plugins", (req, res)=>{
+        res.json(getPluginAdminList());
+    });
+
+    app.get("/api/plugins/:id/webInterface", (req, res)=>{
+        let wi = getPluginByName(req.params.id).webInterface;
+        res.json({name: wi.name, blocks: wi.blocks, values: wi.getValues()});
+    });
+
+    app.put("/api/plugins/:id/settings", (req, res)=>{
+        let p = getPluginByName(req.params.id)
+        p.webInterface.setValues(req.body);
+        res.json({success: true});
+    })
+
+    app.get("/api/plugins/blocks", (req, res)=>{
+        let blocks = getAdminBlocks();
+        res.json(blocks);
     })
 
     app.patch("/api/endpoint/:id", requireAuth, (req, res)=>{

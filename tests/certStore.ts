@@ -95,7 +95,9 @@ describe("Certificate Storage Tests", ()=>{
         chai.assert(store !== null, "Error Instantiating");
     })
 
-
+    it("Should have a single cert after recreation", ()=>{
+        chai.assert.equal(store.getCertList().length, 1, "Cert wasn't reloaded");
+    })
 
     it("Deleting temporary directory", ()=>{
         rimraf.sync("temp/test");

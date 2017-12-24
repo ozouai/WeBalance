@@ -102,3 +102,6 @@ secureServer.on("upgrade", function(request, socket, head){
 AdminServer.bind(endpoints, certStore);
 
 secureServer.listen(443);
+
+
+import "./PluginManager";
